@@ -41,6 +41,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Install dependencies
+              run: |
+                npm install --no-package-lock
+                # lock 파일이 없어도 무시하고 설치를 진행하라는 명령어입니다.  
