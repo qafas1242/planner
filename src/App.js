@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -67,7 +67,8 @@ const MonthlyPlanner = () => {
     { id: 3, name: '운동', color: '#F59E0B' },
     { id: 4, name: '공부', color: '#8B5CF6' }
   ]);
-  const [viewMode, setViewMode] = useState('day');
+  // 'month', 'week', 'day'
+  const [viewMode, setViewMode] = useState('day'); 
   const [selectedDate, setSelectedDate] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
@@ -103,13 +104,20 @@ const MonthlyPlanner = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + direction, 1));
   };
 
+  // 주간 보기 이동 함수
+  const navigateWeek = (direction) => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + direction * 7);
+    setCurrentDate(newDate);
+  };
+
   const getDateKey = (date) => {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   };
 
   const goToToday = () => {
     const today = new Date();
-    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setCurrentDate(today); // 오늘 날짜로 설정
     
     if (viewMode === 'day') {
       setTimeout(() => {
@@ -119,6 +127,11 @@ const MonthlyPlanner = () => {
           todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
+    } else if (viewMode === 'week') {
+      // 주간 보기에서는 해당 주가 보이도록 스크롤 (구현 생략, 현재 주간 보기 로직은 현재 날짜를 기준으로 주를 표시)
+    } else {
+      // 월간 보기에서는 해당 월의 1일로 이동
+      setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
     }
   };
 
@@ -161,7 +174,7 @@ const MonthlyPlanner = () => {
       opacity: 1, 
       y: 0, 
       transition: { 
-        delay: 0.15, 
+        delay: 0.1, // 타원 확장 시작(0s) 후 0.1초 뒤에 시작
         duration: 0.5,
         ease: "easeOut"
       } 
@@ -176,7 +189,7 @@ const MonthlyPlanner = () => {
       id: Date.now(),
       title: eventTitle,
       tagId: selectedTagId,
-      completed: false, // <-- completed 필드 추가
+      completed: false,
     };
     
     setEvents(prev => ({
@@ -196,7 +209,6 @@ const MonthlyPlanner = () => {
     }));
   };
 
-  // 할 일 완료 상태 토글 함수
   const toggleEventCompletion = (dateKey, eventId) => {
     setEvents(prev => ({
       ...prev,
@@ -295,6 +307,20 @@ const MonthlyPlanner = () => {
     
     return days;
   };
+
+  // 주간 보기를 위한 7일 배열 계산
+  const getDaysForWeekView = useMemo(() => {
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - startOfWeek.getDay()); // 일요일로 설정
+    
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
+    }
+    return days;
+  }, [currentDate]);
 
   // 모달 애니메이션 variants
   const modalVariants = {
@@ -403,7 +429,6 @@ const MonthlyPlanner = () => {
       const dayEvents = events[dateKey] || [];
       const isToday = new Date().toDateString() === date.toDateString();
       
-      // 완료된 항목을 뒤로 정렬
       const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
       days.push(
@@ -472,6 +497,102 @@ const MonthlyPlanner = () => {
     return days;
   };
 
+  const renderWeekView = () => {
+    const days = getDaysForWeekView;
+    
+    return (
+      <motion.div 
+        className="flex-1 flex flex-col"
+        initial={{ opacity: 0, x: 60, scale: 0.98 }}
+        animate={{ opacity: 1, x: 0, scale: 1 }}
+        exit={{ opacity: 0, x: -60, scale: 0.98 }}
+        transition={{ duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
+      >
+        {/* 요일 헤더 */}
+        <div className="grid grid-cols-7 gap-0 mb-2 px-4 md:px-6">
+          {days.map((date, i) => {
+            const dayOfWeek = dayNames[date.getDay()];
+            const isToday = new Date().toDateString() === date.toDateString();
+            return (
+              <div key={i} className={`text-center py-2 text-sm font-semibold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'}`}>
+                <span className={isToday ? 'bg-blue-500 text-white w-6 h-6 flex items-center justify-center rounded-full mx-auto' : ''}>
+                  {dayOfWeek}
+                </span>
+                <div className="text-xs mt-1">{date.getDate()}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 주간 일정 그리드 */}
+        <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-xl overflow-hidden shadow-sm flex-1">
+          {days.map((date, i) => {
+            const dateKey = getDateKey(date);
+            const dayEvents = events[dateKey] || [];
+            const isToday = new Date().toDateString() === date.toDateString();
+            const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+
+            return (
+              <motion.div
+                key={i}
+                className={`border border-gray-100 bg-white cursor-pointer p-1.5 sm:p-2 relative group flex flex-col ${isToday ? 'bg-blue-50/30' : ''}`}
+                onClick={() => openEventModal(date)}
+                variants={calendarCellVariants}
+                initial="initial"
+                animate="animate"
+                whileHover="hover"
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+              >
+                <div className="flex justify-end items-start mb-1">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
+                    whileHover={{ opacity: 1, scale: 1, rotate: 0 }}
+                    transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
+                    className="absolute top-1 right-1"
+                  >
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+                  </motion.div>
+                </div>
+                <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1">
+                  <AnimatePresence>
+                    {sortedEvents.slice(0, 3).map((event, index) => {
+                      const tag = getTagById(event.tagId);
+                      return (
+                        <motion.div
+                          key={event.id}
+                          className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-60' : ''}`}
+                          style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
+                          onClick={(e) => e.stopPropagation()}
+                          variants={calendarEventVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit={{ scaleX: 0, opacity: 0, transition: { duration: 0.3 } }}
+                          custom={index}
+                        >
+                          {event.title}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                  {sortedEvents.length > 3 && (
+                    <motion.div 
+                      className="text-xs text-gray-500"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      +{sortedEvents.length - 3}
+                    </motion.div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+    );
+  };
+
   const renderDayView = () => {
     const days = getDaysForDayView();
     
@@ -489,7 +610,6 @@ const MonthlyPlanner = () => {
           const isToday = new Date().toDateString() === date.toDateString();
           const dayOfWeek = dayNames[date.getDay()];
           
-          // 완료된 항목을 뒤로 정렬
           const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
           return (
@@ -546,7 +666,6 @@ const MonthlyPlanner = () => {
                             style={{ backgroundColor: `${tag?.color}10` }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              // openEventModal(date); // 클릭 시 모달 열기 대신 완료 토글
                               toggleEventCompletion(dateKey, event.id);
                             }}
                             variants={taskItemVariants}
@@ -627,6 +746,28 @@ const MonthlyPlanner = () => {
     }
   }, [viewMode, currentDate]);
 
+  // 뷰 모드 버튼 텍스트를 위한 맵
+  const viewModeMap = {
+    month: { icon: <Calendar className="w-4 h-4" />, text: '월간' },
+    week: { icon: <List className="w-4 h-4" />, text: '주간' },
+    day: { icon: <List className="w-4 h-4" />, text: '일간' },
+  };
+
+  const getNextViewMode = (current) => {
+    if (current === 'month') return 'week';
+    if (current === 'week') return 'day';
+    return 'month';
+  };
+
+  const getPrevViewMode = (current) => {
+    if (current === 'day') return 'week';
+    if (current === 'week') return 'month';
+    return 'day';
+  };
+
+  const currentViewModeData = viewModeMap[viewMode];
+  const nextViewModeData = viewModeMap[getNextViewMode(viewMode)];
+
   return (
     <div className="h-screen bg-white flex flex-col" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col">
@@ -635,18 +776,22 @@ const MonthlyPlanner = () => {
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
             {/* 헤더 */}
             <motion.div 
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4"
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               initial="hidden"
               animate="visible"
               variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
             >
               <motion.div className="flex items-center gap-4" variants={headerItemVariants}>
                 <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-                  {`${currentDate.getFullYear()}년 ${monthNames[currentDate.getMonth()]}`}
+                  {/* 주간 보기일 경우 해당 주 범위 표시 */}
+                  {viewMode === 'week' 
+                    ? `${currentDate.getFullYear()}년 ${monthNames[getDaysForWeekView[0].getMonth()]} ${getDaysForWeekView[0].getDate()}일 - ${monthNames[getDaysForWeekView[6].getMonth()]} ${getDaysForWeekView[6].getDate()}일`
+                    : `${currentDate.getFullYear()}년 ${monthNames[currentDate.getMonth()]}`
+                  }
                 </h1>
                 <div className="flex gap-1">
                   <motion.button
-                    onClick={() => navigateMonth(-1)}
+                    onClick={() => viewMode === 'week' ? navigateWeek(-1) : navigateMonth(-1)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     whileHover={{ scale: 1.15, x: -2 }}
                     whileTap={{ scale: 0.9 }}
@@ -654,7 +799,7 @@ const MonthlyPlanner = () => {
                     <ChevronLeft className="w-5 h-5 text-gray-600" />
                   </motion.button>
                   <motion.button
-                    onClick={() => navigateMonth(1)}
+                    onClick={() => viewMode === 'week' ? navigateWeek(1) : navigateMonth(1)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     whileHover={{ scale: 1.15, x: 2 }}
                     whileTap={{ scale: 0.9 }}
@@ -665,17 +810,18 @@ const MonthlyPlanner = () => {
               </motion.div>
               <motion.div className="flex flex-wrap gap-2" variants={headerItemVariants}>
                 <motion.button
-                  onClick={() => setViewMode(viewMode === 'month' ? 'day' : 'month')}
+                  onClick={() => setViewMode(getNextViewMode(viewMode))}
                   className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                    viewMode === 'day' 
+                    viewMode !== 'month' 
                       ? 'bg-blue-100 text-blue-600' 
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                   whileHover={{ scale: 1.08, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {viewMode === 'month' ? <List className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
-                  <span className="hidden sm:inline">{viewMode === 'month' ? '일간' : '월간'}</span>
+                  {currentViewModeData.icon}
+                  <span className="hidden sm:inline">{currentViewModeData.text}</span>
+                  <span className="text-gray-500 text-xs ml-1">({nextViewModeData.text}로 전환)</span>
                 </motion.button>
                 <motion.button
                   onClick={exportData}
@@ -719,39 +865,12 @@ const MonthlyPlanner = () => {
                 </motion.button>
               </motion.div>
             </motion.div>
-
-            {/* 태그 표시 */}
-            <motion.div 
-              className="flex flex-wrap gap-2"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.4 }}
-            >
-              {tags.map((tag, index) => (
-                <motion.div
-                  key={tag.id}
-                  className="px-3 py-1.5 rounded-full text-sm font-medium"
-                  style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 + index * 0.05, type: "spring", stiffness: 300, damping: 20 }}
-                  whileHover={{ 
-                    scale: 1.1, 
-                    y: -3,
-                    boxShadow: "0 6px 12px rgba(0, 0, 0, 0.15)",
-                    transition: { type: "spring", stiffness: 400, damping: 10 }
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {tag.name}
-                </motion.div>
-              ))}
-            </motion.div>
+            {/* 요청에 따라 태그 나열 제거 */}
           </div>
         </div>
 
         {/* 컨텐츠 영역 - Fixed 헤더 높이만큼 패딩 추가 */}
-        <div className="flex-1 flex flex-col" style={{ paddingTop: '180px' }}>
+        <div className="flex-1 flex flex-col" style={{ paddingTop: '100px' }}> {/* 태그 나열 제거로 인해 높이 조정 */}
           {/* 뷰 모드 전환 애니메이션 */}
           <AnimatePresence mode="wait">
             {/* 월간 보기 */}
@@ -783,6 +902,13 @@ const MonthlyPlanner = () => {
                 <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-xl overflow-hidden shadow-sm flex-1">
                   {renderCalendar()}
                 </div>
+              </motion.div>
+            )}
+
+            {/* 주간 보기 */}
+            {viewMode === 'week' && (
+              <motion.div key="week-view" className="flex-1 flex flex-col">
+                {renderWeekView()}
               </motion.div>
             )}
 
@@ -986,8 +1112,15 @@ const MonthlyPlanner = () => {
                             <motion.div 
                               className="absolute inset-0 rounded-lg border-3 border-white ring-2 ring-gray-400"
                               initial={{ scale: 0, rotate: -180 }}
-                              animate={{ scale: 1, rotate: 0 }}
-                              transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                              animate={{ 
+                                scale: 1, 
+                                rotate: 0,
+                                transition: { 
+                                  type: "spring", 
+                                  stiffness: 500, 
+                                  damping: 25 
+                                }
+                              }}
                             />
                           )}
                         </motion.button>
