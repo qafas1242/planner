@@ -1,9 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List } from 'lucide-react';
-// Framer Motion을 사용하여 부드럽고 동적인 애니메이션을 구현합니다.
-// 이 코드를 사용하려면 프로젝트에 'framer-motion' 패키지를 설치해야 합니다.
-// 예: npm install framer-motion 또는 yarn add framer-motion
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Animated Checkbox Component
+const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
+  const checkmarkVariants = {
+    checked: { pathLength: 1, opacity: 1 },
+    unchecked: { pathLength: 0, opacity: 0 }
+  };
+
+  const fillVariants = {
+    checked: { opacity: 1, scale: 1, backgroundColor: color },
+    unchecked: { opacity: 0, scale: 0.5, backgroundColor: "#fff" }
+  };
+
+  return (
+    <motion.div
+      className="w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer flex-shrink-0 relative"
+      style={{ borderColor: color }}
+      onClick={onClick}
+      initial={false}
+      animate={isChecked ? "checked" : "unchecked"}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+    >
+      {/* 원형 배경 Fade In 채우기 */}
+      <motion.div
+        className="w-full h-full rounded-full absolute"
+        variants={fillVariants}
+        transition={{ duration: 0.3 }}
+      />
+      <motion.svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="white"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="relative z-10"
+      >
+        {/* 체크 표시를 왼쪽에서 오른쪽으로 꺾으면서 그리기 */}
+        <motion.path
+          d="M6 12l4 4l8 -8"
+          variants={checkmarkVariants}
+          style={{ pathLength: 0 }}
+          transition={{ 
+            type: "tween", 
+            duration: 0.3, 
+            ease: "easeOut",
+            delay: 0.1 // 배경 채우기 후 시작
+          }}
+        />
+      </motion.svg>
+    </motion.div>
+  );
+};
 
 const MonthlyPlanner = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -14,7 +67,7 @@ const MonthlyPlanner = () => {
     { id: 3, name: '운동', color: '#F59E0B' },
     { id: 4, name: '공부', color: '#8B5CF6' }
   ]);
-  const [viewMode, setViewMode] = useState('day'); // 'month' or 'day' - 일간 보기(월별 리스트)를 기본으로 설정
+  const [viewMode, setViewMode] = useState('day');
   const [selectedDate, setSelectedDate] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
@@ -54,7 +107,6 @@ const MonthlyPlanner = () => {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   };
 
-  // 오늘로 이동하는 함수 (일간 보기에서 중앙 정렬)
   const goToToday = () => {
     const today = new Date();
     setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -64,13 +116,13 @@ const MonthlyPlanner = () => {
         const todayKey = getDateKey(today);
         const todayElement = document.getElementById(todayKey);
         if (todayElement) {
-          todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' }); // 중앙 정렬
+          todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
     }
   };
 
-  // 할 일 추가 시 애니메이션을 위한 variants (더 역동적으로 강화)
+  // 할 일 추가 시 애니메이션을 위한 variants
   const taskItemVariants = {
     hidden: { 
       scaleX: 0, 
@@ -84,8 +136,8 @@ const MonthlyPlanner = () => {
       originX: 0,
       transition: { 
         type: "spring", 
-        stiffness: 300, // 더 역동적으로 증가
-        damping: 15, // 더 탄력적으로 감소
+        stiffness: 300, 
+        damping: 15, 
         when: "beforeChildren"
       }
     },
@@ -109,7 +161,7 @@ const MonthlyPlanner = () => {
       opacity: 1, 
       y: 0, 
       transition: { 
-        delay: 0.15, // 부모(타원 성장) 애니메이션 후 딜레이
+        delay: 0.15, 
         duration: 0.5,
         ease: "easeOut"
       } 
@@ -123,7 +175,8 @@ const MonthlyPlanner = () => {
     const newEvent = {
       id: Date.now(),
       title: eventTitle,
-      tagId: selectedTagId
+      tagId: selectedTagId,
+      completed: false, // <-- completed 필드 추가
     };
     
     setEvents(prev => ({
@@ -140,6 +193,16 @@ const MonthlyPlanner = () => {
     setEvents(prev => ({
       ...prev,
       [dateKey]: prev[dateKey].filter(e => e.id !== eventId)
+    }));
+  };
+
+  // 할 일 완료 상태 토글 함수
+  const toggleEventCompletion = (dateKey, eventId) => {
+    setEvents(prev => ({
+      ...prev,
+      [dateKey]: prev[dateKey].map(event => 
+        event.id === eventId ? { ...event, completed: !event.completed } : event
+      )
     }));
   };
 
@@ -219,13 +282,12 @@ const MonthlyPlanner = () => {
     setShowColorPicker(false);
   };
 
-  // 일간 보기(월별 리스트)를 위한 해당 월의 모든 날짜를 가져오는 함수
   const getDaysForDayView = () => {
     const days = [];
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0).getDate(); // 해당 월의 마지막 날짜
+    const lastDay = new Date(year, month + 1, 0).getDate();
     
     for (let day = 1; day <= lastDay; day++) {
       days.push(new Date(year, month, day));
@@ -234,7 +296,7 @@ const MonthlyPlanner = () => {
     return days;
   };
 
-  // 모달 애니메이션 variants (더 역동적으로 강화)
+  // 모달 애니메이션 variants
   const modalVariants = {
     hidden: { opacity: 0, scale: 0.9, y: 20 },
     visible: { 
@@ -266,7 +328,7 @@ const MonthlyPlanner = () => {
     exit: { opacity: 0, transition: { duration: 0.2 } }
   };
 
-  // 헤더 항목 애니메이션 variants (Staggered Fade In) - 더 역동적으로
+  // 헤더 항목 애니메이션 variants
   const headerItemVariants = {
     hidden: { opacity: 0, y: -15, scale: 0.95 },
     visible: { 
@@ -282,7 +344,7 @@ const MonthlyPlanner = () => {
     }
   };
 
-  // 캘린더 셀 애니메이션 variants (Hover Scale) - 더 역동적으로
+  // 캘린더 셀 애니메이션 variants
   const calendarCellVariants = {
     initial: { opacity: 0, y: 15, scale: 0.95 },
     animate: { 
@@ -322,7 +384,7 @@ const MonthlyPlanner = () => {
         type: "spring",
         stiffness: 300,
         damping: 20,
-        delay: index * 0.05 // Staggered effect
+        delay: index * 0.05
       }
     })
   };
@@ -341,6 +403,9 @@ const MonthlyPlanner = () => {
       const dayEvents = events[dateKey] || [];
       const isToday = new Date().toDateString() === date.toDateString();
       
+      // 완료된 항목을 뒤로 정렬
+      const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+
       days.push(
         <motion.div
           key={day}
@@ -350,7 +415,7 @@ const MonthlyPlanner = () => {
           initial="initial"
           animate="animate"
           whileHover="hover"
-          transition={{ duration: 0.3, delay: (day + startingDayOfWeek) * 0.015 }} // Staggered load
+          transition={{ duration: 0.3, delay: (day + startingDayOfWeek) * 0.015 }}
         >
           <div className="flex justify-between items-start mb-1">
             <motion.span 
@@ -370,12 +435,12 @@ const MonthlyPlanner = () => {
           </div>
           <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1">
             <AnimatePresence>
-              {dayEvents.slice(0, 2).map((event, index) => {
+              {sortedEvents.slice(0, 2).map((event, index) => {
                 const tag = getTagById(event.tagId);
                 return (
                   <motion.div
                     key={event.id}
-                    className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate"
+                    className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-60' : ''}`}
                     style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
                     onClick={(e) => e.stopPropagation()}
                     variants={calendarEventVariants}
@@ -389,14 +454,14 @@ const MonthlyPlanner = () => {
                 );
               })}
             </AnimatePresence>
-            {dayEvents.length > 2 && (
+            {sortedEvents.length > 2 && (
               <motion.div 
                 className="text-xs text-gray-500"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                +{dayEvents.length - 2}
+                +{sortedEvents.length - 2}
               </motion.div>
             )}
           </div>
@@ -424,6 +489,9 @@ const MonthlyPlanner = () => {
           const isToday = new Date().toDateString() === date.toDateString();
           const dayOfWeek = dayNames[date.getDay()];
           
+          // 완료된 항목을 뒤로 정렬
+          const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+
           return (
             <motion.div
               key={index}
@@ -461,7 +529,7 @@ const MonthlyPlanner = () => {
                   </motion.button>
                 </div>
                 
-                {dayEvents.length > 0 ? (
+                {sortedEvents.length > 0 ? (
                   <motion.div 
                     className="space-y-2"
                     initial="hidden"
@@ -469,16 +537,17 @@ const MonthlyPlanner = () => {
                     variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
                   >
                     <AnimatePresence>
-                      {dayEvents.map((event, eventIndex) => {
+                      {sortedEvents.map((event, eventIndex) => {
                         const tag = getTagById(event.tagId);
                         return (
                           <motion.div
                             key={event.id}
-                            className="flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden"
+                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden ${event.completed ? 'opacity-60' : 'hover:shadow-md'}`}
                             style={{ backgroundColor: `${tag?.color}10` }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              openEventModal(date);
+                              // openEventModal(date); // 클릭 시 모달 열기 대신 완료 토글
+                              toggleEventCompletion(dateKey, event.id);
                             }}
                             variants={taskItemVariants}
                             initial="hidden"
@@ -486,28 +555,25 @@ const MonthlyPlanner = () => {
                             exit="exit"
                             layout
                             whileHover={{ 
-                              scale: 1.02, 
-                              boxShadow: "0 8px 16px rgba(0, 0, 0, 0.1)",
+                              scale: event.completed ? 1.0 : 1.02, 
+                              boxShadow: event.completed ? 'none' : "0 8px 16px rgba(0, 0, 0, 0.1)",
                               transition: { type: "spring", stiffness: 400, damping: 15 }
                             }}
                           >
-                            <motion.div 
-                              className="w-1 h-12 rounded-full" 
-                              style={{ backgroundColor: tag?.color }} 
-                              initial={{ scaleY: 0 }}
-                              animate={{ scaleY: 1 }}
-                              transition={{ 
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 20,
-                                delay: 0.1
+                            <AnimatedCheckbox 
+                              isChecked={event.completed} 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleEventCompletion(dateKey, event.id);
                               }}
+                              color={tag?.color}
                             />
+                            
                             <motion.div 
                               className="flex-1"
                               variants={taskTitleVariants}
                             >
-                              <div className="font-medium text-gray-900">{event.title}</div>
+                              <div className={`font-medium text-gray-900 ${event.completed ? 'line-through' : ''}`}>{event.title}</div>
                               <div className="text-xs mt-1 px-2 py-0.5 rounded inline-block" style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}>
                                 {tag?.name}
                               </div>
@@ -549,13 +615,11 @@ const MonthlyPlanner = () => {
   useEffect(() => {
     if (viewMode === 'day') {
       setTimeout(() => {
-        // 일간 보기(월별 리스트)에서는 오늘 날짜로 스크롤
         const todayKey = getDateKey(new Date());
         const todayElement = document.getElementById(todayKey);
         if (todayElement) {
           todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
-          // 오늘 날짜가 현재 월에 없으면 1일로 스크롤
           const firstDayKey = getDateKey(getDaysForDayView()[0]);
           document.getElementById(firstDayKey)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -566,7 +630,7 @@ const MonthlyPlanner = () => {
   return (
     <div className="h-screen bg-white flex flex-col" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col">
-        {/* 메뉴를 감싸는 Fixed Wrapper - 스크롤해도 절대 움직이지 않음 */}
+        {/* 메뉴를 감싸는 Fixed Wrapper */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
             {/* 헤더 */}
@@ -808,12 +872,12 @@ const MonthlyPlanner = () => {
                   >
                     <h3 className="text-sm font-semibold text-gray-600 mb-2">할 일 목록</h3>
                     <AnimatePresence>
-                      {events[getDateKey(selectedDate)].map(event => {
+                      {events[getDateKey(selectedDate)].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)).map(event => {
                         const tag = getTagById(event.tagId);
                         return (
                           <motion.div 
                             key={event.id} 
-                            className="flex items-center justify-between p-3 rounded-lg" 
+                            className={`flex items-center justify-between p-3 rounded-lg ${event.completed ? 'opacity-60' : ''}`} 
                             style={{ backgroundColor: `${tag?.color}10` }}
                             variants={taskItemVariants}
                             initial="hidden"
@@ -822,9 +886,16 @@ const MonthlyPlanner = () => {
                             layout
                           >
                             <div className="flex items-center gap-2 flex-1 overflow-hidden">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: tag?.color }} />
+                              <AnimatedCheckbox 
+                                isChecked={event.completed} 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleEventCompletion(getDateKey(selectedDate), event.id);
+                                }}
+                                color={tag?.color}
+                              />
                               <motion.span 
-                                className="text-sm font-medium text-gray-900 truncate"
+                                className={`text-sm font-medium text-gray-900 truncate ${event.completed ? 'line-through' : ''}`}
                                 variants={taskTitleVariants}
                               >
                                 {event.title}
