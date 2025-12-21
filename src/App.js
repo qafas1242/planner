@@ -115,18 +115,20 @@ const MonthlyPlanner = () => {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   };
 
+  const scrollToDate = (date) => {
+    const dateKey = getDateKey(date);
+    const dateElement = document.getElementById(dateKey);
+    if (dateElement) {
+      dateElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   const goToToday = () => {
     const today = new Date();
     setCurrentDate(today); 
     
     if (viewMode === 'day') {
-      setTimeout(() => {
-        const todayKey = getDateKey(today);
-        const todayElement = document.getElementById(todayKey);
-        if (todayElement) {
-          todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
+      setTimeout(() => scrollToDate(today), 100);
     } else if (viewMode === 'week') {
       // 주간 보기에서는 해당 주가 보이도록 스크롤 (구현 생략, 현재 주간 보기 로직은 현재 날짜를 기준으로 주를 표시)
     } else {
@@ -139,6 +141,8 @@ const MonthlyPlanner = () => {
   const switchToDayView = (date) => {
     setCurrentDate(date);
     setViewMode('day');
+    // 뷰 모드 전환 후 스크롤을 위해 setTimeout 사용
+    setTimeout(() => scrollToDate(date), 100); 
   };
 
   // 할 일 추가 시 애니메이션을 위한 variants
@@ -747,16 +751,14 @@ const MonthlyPlanner = () => {
 
   useEffect(() => {
     if (viewMode === 'day') {
-      setTimeout(() => {
-        const todayKey = getDateKey(new Date());
-        const todayElement = document.getElementById(todayKey);
-        if (todayElement) {
-          todayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
+      // goToToday에서 이미 스크롤 로직을 처리하므로, 여기서는 현재 날짜가 오늘이 아닐 경우에만 첫 날로 스크롤
+      const today = new Date();
+      if (getDateKey(currentDate) !== getDateKey(today)) {
+        setTimeout(() => {
           const firstDayKey = getDateKey(getDaysForDayView()[0]);
           document.getElementById(firstDayKey)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
+        }, 100);
+      }
     }
   }, [viewMode, currentDate]);
 
