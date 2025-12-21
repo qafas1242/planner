@@ -3,7 +3,7 @@ name: Deploy React App
 on:
   push:
     branches:
-      - main  # 내 기본 브랜치가 main인지 master인지 확인하세요
+      - main  # 브랜치 이름이 master라면 master로 수정하세요
 
 permissions:
   contents: read
@@ -20,8 +20,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20  # 최신 안정화 버전 사용
-          cache: 'npm'
+          node-version: 20
+          # ★ 여기에 있던 cache: 'npm' 줄을 반드시 지워야 합니다 ★
 
       - name: Install dependencies
         run: npm install
@@ -32,7 +32,7 @@ jobs:
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./build  # React는 결과물이 build 폴더에 생성됩니다
+          path: ./build
 
   deploy:
     needs: build
