@@ -117,7 +117,7 @@ const MonthlyPlanner = () => {
 
   const goToToday = () => {
     const today = new Date();
-    setCurrentDate(today); // 오늘 날짜로 설정
+    setCurrentDate(today); 
     
     if (viewMode === 'day') {
       setTimeout(() => {
@@ -133,6 +133,12 @@ const MonthlyPlanner = () => {
       // 월간 보기에서는 해당 월의 1일로 이동
       setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
     }
+  };
+
+  // 주간 보기에서 날짜 클릭 시 일간 보기로 전환하는 함수
+  const switchToDayView = (date) => {
+    setCurrentDate(date);
+    setViewMode('day');
   };
 
   // 할 일 추가 시 애니메이션을 위한 variants
@@ -514,12 +520,18 @@ const MonthlyPlanner = () => {
             const dayOfWeek = dayNames[date.getDay()];
             const isToday = new Date().toDateString() === date.toDateString();
             return (
-              <div key={i} className={`text-center py-2 text-sm font-semibold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'}`}>
+              <motion.div 
+                key={i} 
+                className={`text-center py-2 text-sm font-semibold cursor-pointer transition-colors rounded-lg ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'}`}
+                onClick={() => switchToDayView(date)} // 클릭 이벤트 추가
+                whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.05)', scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 <span className={isToday ? 'bg-blue-500 text-white w-6 h-6 flex items-center justify-center rounded-full mx-auto' : ''}>
                   {dayOfWeek}
                 </span>
                 <div className="text-xs mt-1">{date.getDate()}</div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -662,7 +674,8 @@ const MonthlyPlanner = () => {
                         return (
                           <motion.div
                             key={event.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden ${event.completed ? 'opacity-60' : 'hover:shadow-md'}`}
+                            // 체크된 항목은 투명도를 낮춥니다.
+                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden ${event.completed ? 'opacity-50' : 'hover:shadow-md'}`}
                             style={{ backgroundColor: `${tag?.color}10` }}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -689,11 +702,12 @@ const MonthlyPlanner = () => {
                             />
                             
                             <motion.div 
-                              className="flex-1"
+                              className="flex-1 flex items-center gap-2" // 태그 이름을 옆에 표시하기 위해 flex-1 flex items-center gap-2 추가
                               variants={taskTitleVariants}
                             >
                               <div className={`font-medium text-gray-900 ${event.completed ? 'line-through' : ''}`}>{event.title}</div>
-                              <div className="text-xs mt-1 px-2 py-0.5 rounded inline-block" style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}>
+                              {/* 할 일 이름 옆에 태그 이름 표시 */}
+                              <div className="text-xs px-2 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}>
                                 {tag?.name}
                               </div>
                             </motion.div>
@@ -870,7 +884,7 @@ const MonthlyPlanner = () => {
         </div>
 
         {/* 컨텐츠 영역 - Fixed 헤더 높이만큼 패딩 추가 */}
-        <div className="flex-1 flex flex-col" style={{ paddingTop: '100px' }}> {/* 태그 나열 제거로 인해 높이 조정 */}
+        <div className="flex-1 flex flex-col" style={{ paddingTop: '100px' }}>
           {/* 뷰 모드 전환 애니메이션 */}
           <AnimatePresence mode="wait">
             {/* 월간 보기 */}
@@ -1003,7 +1017,7 @@ const MonthlyPlanner = () => {
                         return (
                           <motion.div 
                             key={event.id} 
-                            className={`flex items-center justify-between p-3 rounded-lg ${event.completed ? 'opacity-60' : ''}`} 
+                            className={`flex items-center justify-between p-3 rounded-lg ${event.completed ? 'opacity-50' : ''}`} 
                             style={{ backgroundColor: `${tag?.color}10` }}
                             variants={taskItemVariants}
                             initial="hidden"
