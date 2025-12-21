@@ -24,7 +24,7 @@ jobs:
           # ★ 여기에 있던 cache: 'npm' 줄을 반드시 지워야 합니다 ★
 
       - name: Install dependencies
-        run: npm install
+        run: npm install framer-motion
 
       - name: Build
         run: npm run build
