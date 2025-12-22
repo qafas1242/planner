@@ -21,10 +21,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # ★ 여기에 있던 cache: 'npm' 줄을 반드시 지워야 합니다 ★
 
       - name: Install motion
-        run: npm install framer-motion lucide-react @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities @dnd-kit/keyboard-sensors
+        run: npm install framer-motion
+        
+      - name: Install react
+        run: npm install lucide-react 
+        
+      - name: Install dnd
+        run: npm install @dnd-kit/core
 
       - name: Build
         run: npm run build
