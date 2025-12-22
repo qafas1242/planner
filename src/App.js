@@ -54,7 +54,6 @@ const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
           }}
         />
       </motion.svg>
-    >
   );
 };
 
