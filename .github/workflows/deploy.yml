@@ -23,8 +23,11 @@ jobs:
           node-version: 20
           # ★ 여기에 있던 cache: 'npm' 줄을 반드시 지워야 합니다 ★
 
-      - name: Install dependencies
+      - name: Install motion
         run: npm install framer-motion
+
+      - name: Install firebase
+        run: npm install firebase
 
       - name: Build
         run: npm run build
