@@ -49,10 +49,8 @@ const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
           d="M6 12l4 4l8 -8"
           variants={checkmarkVariants}
           style={{ pathLength: 0 }}
-          transition={{ 
-            type: "tween", 
-            duration: 0.3, 
-            ease: "easeOut",
+            transition={{ 
+            duration: 0.2, 
             delay: 0.1 // 배경 채우기 후 시작
           }}
         />
@@ -255,48 +253,45 @@ const MonthlyPlanner = () => {
     // setTimeout(() => scrollToDate(date), 450); 
   };
 
-  // 할 일 추가 시 애니메이션을 위한 variants
+  // 할 일 추가 시 애니메이션을 위한 variants (페이드 인/아웃으로 단순화)
   const taskItemVariants = {
     hidden: { 
-      scaleX: 0, 
       opacity: 0, 
-      originX: 0,
-      transition: { duration: 0.3 }
+      height: 0, 
+      paddingTop: 0, 
+      paddingBottom: 0,
+      transition: { duration: 0.2 }
     },
     visible: { 
-      scaleX: 1, 
       opacity: 1, 
-      originX: 0,
+      height: 'auto', 
+      paddingTop: '0.5rem', 
+      paddingBottom: '0.5rem',
       transition: { 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 15, 
+        duration: 0.3,
         when: "beforeChildren"
       }
     },
     exit: { 
       opacity: 0, 
-      scaleX: 0,
       height: 0, 
       paddingTop: 0, 
       paddingBottom: 0,
       transition: { 
-        duration: 0.4,
+        duration: 0.2,
         ease: "easeInOut"
       }
     }
   };
 
-  // 할 일 제목 Fade In 애니메이션 variants
+  // 할 일 제목 Fade In 애니메이션 variants (단순화)
   const taskTitleVariants = {
-    hidden: { opacity: 0, y: 8 },
+    hidden: { opacity: 0 },
     visible: { 
       opacity: 1, 
-      y: 0, 
       transition: { 
-        delay: 0.1, // 타원 확장 시작(0s) 후 0.1초 뒤에 시작
-        duration: 0.5,
-        ease: "easeOut"
+        delay: 0.1,
+        duration: 0.3,
       } 
     }
   };
@@ -449,7 +444,28 @@ const MonthlyPlanner = () => {
     if (!over) return;
 
     const draggedEventId = active.id;
-    const destinationDateKey = over.id;
+    const sourceDateKey = active.data.current.dateKey;
+    const targetDateKey = over.id;
+
+    if (sourceDateKey === targetDateKey) return; // 같은 날짜로 이동은 무시
+
+    setEvents(prevEvents => {
+      const eventToMove = prevEvents[sourceDateKey].find(e => e.id === draggedEventId);
+      if (!eventToMove) return prevEvents;
+
+      // 1. 원본 날짜에서 이벤트 제거
+      const newSourceEvents = prevEvents[sourceDateKey].filter(e => e.id !== draggedEventId);
+      
+      // 2. 대상 날짜에 이벤트 추가
+      const newTargetEvents = [...(prevEvents[targetDateKey] || []), eventToMove];
+
+      return {
+        ...prevEvents,
+        [sourceDateKey]: newSourceEvents,
+        [targetDateKey]: newTargetEvents,
+      };
+    });
+  };ver.id;
     const sourceDateKey = active.data.current.dateKey;
 
     // 드롭 대상이 날짜 키가 아니거나, 같은 날짜에 드롭한 경우
@@ -669,25 +685,26 @@ const MonthlyPlanner = () => {
             transition={{ duration: 0.3, delay: (day + startingDayOfWeek) * 0.015 }}
             className="flex flex-col h-full"
           >
-            <div className="flex justify-between items-start mb-1">
-              <motion.span 
-                className={`text-xs sm:text-sm font-medium ${isToday ? 'bg-blue-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs' : 'text-gray-700'}`}
-                whileHover={isToday ? { scale: 1.1, rotate: 5 } : {}}
-              >
-                {day}
-              </motion.span>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
-                whileHover={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
-                className="absolute top-1 right-1"
-              >
-                <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-              </motion.div>
-            </div>
-            <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1">
-              <AnimatePresence>
-                {sortedEvents.slice(0, 2).map((event, index) => {
+	            <div className="flex justify-between items-start mb-1">
+	              <motion.span 
+	                className={`text-xs sm:text-sm font-medium ${isToday ? 'bg-blue-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs' : 'text-gray-700'}`}
+	                whileHover={isToday ? { scale: 1.1, rotate: 5 } : {}}
+	              >
+	                {day}
+	              </motion.span>
+	              <motion.div
+	                initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
+	                whileHover={{ opacity: 1, scale: 1, rotate: 0 }}
+	                transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
+	                className="absolute top-1 right-1"
+	                onClick={(e) => { e.stopPropagation(); openEventModal(date); }}
+	              >
+	                <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+	              </motion.div>
+	            </div>
+	            <div className="space-y-0.5 sm:space-y-1 overflow-y-auto flex-1">
+	              <AnimatePresence>
+	                {sortedEvents.map((event, index) => {
                   const tag = getTagById(event.tagId);
                   return (
                     <DraggableEvent 
@@ -695,17 +712,34 @@ const MonthlyPlanner = () => {
                       event={event} 
                       tag={tag} 
                       dateKey={dateKey}
-                    >
-                      <motion.div
-                        style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
-                        variants={calendarEventVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit={{ scaleX: 0, opacity: 0, transition: { duration: 0.3 } }}
-                        custom={index}
-                      >
-                        {event.title}
-                      </motion.div>
+                 	                      <motion.div
+	                        className="flex items-center justify-between"
+	                        style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
+	                        variants={calendarEventVariants}
+	                        initial="hidden"
+	                        animate="visible"
+	                        exit={{ scaleX: 0, opacity: 0, transition: { duration: 0.3 } }}
+	                      >
+	                        <span className={`truncate ${event.completed ? 'line-through opacity-60' : ''}`}>{event.title}</span>
+	                        <motion.div
+	                          className="flex-shrink-0 ml-1"
+	                          whileHover={{ scale: 1.1 }}
+	                          whileTap={{ scale: 0.9 }}
+	                          onClick={(e) => {
+	                            e.stopPropagation();
+	                            toggleEventCompletion(dateKey, event.id);
+	                          }}
+	                        >
+	                          <AnimatedCheckbox 
+	                            isChecked={event.completed} 
+	                            color={tag?.color} 
+	                            onClick={(e) => {
+	                              e.stopPropagation();
+	                              toggleEventCompletion(dateKey, event.id);
+	                            }}
+	                          />
+	                        </motion.div>
+	                      </motion.div>                      </motion.div>
                     </DraggableEvent>
                   );
                 })}
@@ -794,9 +828,9 @@ const MonthlyPlanner = () => {
                       <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                     </motion.div>
                   </div>
-                  <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1">
-                    <AnimatePresence>
-                      {sortedEvents.slice(0, 3).map((event, index) => {
+	                  <div className="space-y-0.5 sm:space-y-1 overflow-y-auto flex-1">
+	                    <AnimatePresence>
+	                      {sortedEvents.map((event, index) => {
                         const tag = getTagById(event.tagId);
                         return (
                           <DraggableEvent 
@@ -805,16 +839,35 @@ const MonthlyPlanner = () => {
                             tag={tag} 
                             dateKey={dateKey}
                           >
-                            <motion.div
-                              style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
-                              variants={calendarEventVariants}
-                              initial="hidden"
-                              animate="visible"
-                              exit={{ scaleX: 0, opacity: 0, transition: { duration: 0.3 } }}
-                              custom={index}
-                            >
-                              {event.title}
-                            </motion.div>
+	                            <motion.div
+	                              className="flex items-center justify-between"
+	                              style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
+	                              variants={calendarEventVariants}
+	                              initial="hidden"
+	                              animate="visible"
+	                              exit={{ scaleX: 0, opacity: 0, transition: { duration: 0.3 } }}
+	                              custom={index}
+	                            >
+	                              <span className={`truncate ${event.completed ? 'line-through opacity-60' : ''}`}>{event.title}</span>
+	                              <motion.div
+	                                className="flex-shrink-0 ml-1"
+	                                whileHover={{ scale: 1.1 }}
+	                                whileTap={{ scale: 0.9 }}
+	                                onClick={(e) => {
+	                                  e.stopPropagation();
+	                                  toggleEventCompletion(dateKey, event.id);
+	                                }}
+	                              >
+	                                <AnimatedCheckbox 
+	                                  isChecked={event.completed} 
+	                                  color={tag?.color} 
+	                                  onClick={(e) => {
+	                                    e.stopPropagation();
+	                                    toggleEventCompletion(dateKey, event.id);
+	                                  }}
+	                                />
+	                              </motion.div>
+	                            </motion.div>
                           </DraggableEvent>
                         );
                       })}
@@ -999,23 +1052,37 @@ const MonthlyPlanner = () => {
           <motion.div 
             key="month-view"
             className="grid grid-cols-7 flex-1 overflow-y-auto border-t border-gray-200"
-            initial={{ opacity: 0, x: -60, scale: 0.98 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 60, scale: 0.98 }}
-            transition={{ duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
             {renderCalendar()}
           </motion.div>
         );
       case 'week':
         return (
-          <motion.div key="week-view" className="flex-1 flex flex-col">
+          <motion.div 
+            key="week-view" 
+            className="flex-1 flex flex-col"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             {renderWeekView()}
           </motion.div>
         );
       case 'day':
         return (
-          <motion.div key="day-view" className="flex-1 flex flex-col">
+          <motion.div 
+            key="day-view" 
+            className="flex-1 flex flex-col"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             {renderDayView()}
           </motion.div>
         );
@@ -1060,7 +1127,7 @@ const MonthlyPlanner = () => {
       <div className="max-w-7xl w-full mx-auto bg-white rounded-xl flex flex-col h-[90vh]">
         
         {/* Header */}
-        <header className="p-4 sm:p-6 border-b border-gray-200 flex flex-col space-y-3">
+        <header className="sticky top-0 z-20 bg-white p-4 sm:p-6 border-b border-gray-200 flex flex-col space-y-3">
           <div className="flex justify-between items-center">
             <motion.h1 
               className="text-3xl sm:text-4xl font-extrabold text-gray-900"
@@ -1196,22 +1263,24 @@ const MonthlyPlanner = () => {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.2 }}
           >
             {renderTagFilters()}
           </motion.div>
         </header>
 
         {/* Main Content */}
-        <DndContext 
-          onDragEnd={handleDragEnd}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToParentElement]}
-        >
-          <AnimatePresence mode="wait">
-            {renderView()}
-          </AnimatePresence>
-        </DndContext>
+        <div className="flex-1 overflow-y-auto">
+          <DndContext 
+            onDragEnd={handleDragEnd}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToParentElement]}
+          >
+            <AnimatePresence mode="wait">
+              {renderView()}
+            </AnimatePresence>
+          </DndContext>
+        </div>
 
       </div>
 
@@ -1357,7 +1426,7 @@ const MonthlyPlanner = () => {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.2 }}
                   >
                     <h4 className="text-sm font-medium mb-2 text-gray-600">기본 색상</h4>
                     <div className="flex flex-wrap gap-2 mb-3">
