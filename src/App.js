@@ -247,14 +247,12 @@ const MonthlyPlanner = () => {
     }
   };
 
-  // 주간 보기에서 날짜 클릭 시 일간 보기로 전환하는 함수
+  // 주간 보기에서 날짜 클릭 시 일간 보기로 전환하는 함수 (사용자 요청으로 기능 제거)
   const switchToDayView = (date) => {
-    setCurrentDate(date);
-    setViewMode('day');
-    
-    // 뷰 모드 전환 애니메이션(400ms)이 끝난 후 스크롤이 실행되도록 지연 시간을 넉넉하게 줌
-    // 400ms + 50ms = 450ms
-    setTimeout(() => scrollToDate(date), 450); 
+    // 기능 제거
+    // setCurrentDate(date);
+    // setViewMode('day');
+    // setTimeout(() => scrollToDate(date), 450); 
   };
 
   // 할 일 추가 시 애니메이션을 위한 variants
@@ -751,7 +749,7 @@ const MonthlyPlanner = () => {
               <motion.div 
                 key={i} 
                 className={`text-center py-2 text-sm font-semibold cursor-pointer transition-colors rounded-lg ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'}`}
-                onClick={() => switchToDayView(date)} // 클릭 이벤트 추가
+              onClick={() => { /* 주간 모드에서 날짜 클릭 시 일간 모드 전환 기능 제거 */ }}/ 클릭 이벤트 추가
                 whileHover={{ scale: 1.05, backgroundColor: '#f3f4f6' }}
               >
                 <span className={`block ${isToday ? 'text-blue-600' : ''}`}>{dayOfWeek}</span>
@@ -1059,7 +1057,7 @@ const MonthlyPlanner = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col p-4 sm:p-8">
-      <div className="max-w-7xl w-full mx-auto bg-white shadow-2xl rounded-xl flex flex-col h-[90vh]">
+      <div className="max-w-7xl w-full mx-auto bg-white rounded-xl flex flex-col h-[90vh]">
         
         {/* Header */}
         <header className="p-4 sm:p-6 border-b border-gray-200 flex flex-col space-y-3">
@@ -1420,4 +1418,3 @@ const MonthlyPlanner = () => {
 };
 
 export default MonthlyPlanner;
-
