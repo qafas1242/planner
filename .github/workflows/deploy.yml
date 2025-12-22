@@ -26,9 +26,6 @@ jobs:
       - name: Install motion
         run: npm install framer-motion
 
-      - name: Install firebase
-        run: npm install firebase
-
       - name: Build
         run: npm run build
 
