@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -78,6 +78,9 @@ const MonthlyPlanner = () => {
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [customColor, setCustomColor] = useState('#3B82F6');
+  
+  // 스크롤을 위한 Ref 추가
+  const dayViewRef = useRef(null);
 
   const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
   const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
@@ -118,8 +121,20 @@ const MonthlyPlanner = () => {
   const scrollToDate = (date) => {
     const dateKey = getDateKey(date);
     const dateElement = document.getElementById(dateKey);
-    if (dateElement) {
-      dateElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    if (dateElement && dayViewRef.current) {
+      // 스크롤 컨테이너를 명시적으로 사용하여 스크롤
+      const container = dayViewRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = dateElement.getBoundingClientRect();
+      
+      // 요소의 중앙이 컨테이너의 중앙에 오도록 계산
+      const scrollPosition = elementRect.top - containerRect.top + container.scrollTop - (containerRect.height / 2) + (elementRect.height / 2);
+      
+      container.scrollTo({
+        top: scrollPosition,
+        behavior: 'smooth'
+      });
     }
   };
 
@@ -128,7 +143,8 @@ const MonthlyPlanner = () => {
     setCurrentDate(today); 
     
     if (viewMode === 'day') {
-      setTimeout(() => scrollToDate(today), 100);
+      // goToToday는 이미 일간 보기일 때만 호출되므로, 뷰 전환 애니메이션을 기다릴 필요 없이 바로 스크롤 시도
+      setTimeout(() => scrollToDate(today), 50);
     } else if (viewMode === 'week') {
       // 주간 보기에서는 해당 주가 보이도록 스크롤 (구현 생략, 현재 주간 보기 로직은 현재 날짜를 기준으로 주를 표시)
     } else {
@@ -141,8 +157,10 @@ const MonthlyPlanner = () => {
   const switchToDayView = (date) => {
     setCurrentDate(date);
     setViewMode('day');
-    // 뷰 모드 전환 후 스크롤을 위해 setTimeout 사용
-    setTimeout(() => scrollToDate(date), 100); 
+    
+    // 뷰 모드 전환 애니메이션(400ms)이 끝난 후 스크롤이 실행되도록 지연 시간을 넉넉하게 줌
+    // 400ms + 50ms = 450ms
+    setTimeout(() => scrollToDate(date), 450); 
   };
 
   // 할 일 추가 시 애니메이션을 위한 variants
@@ -380,7 +398,7 @@ const MonthlyPlanner = () => {
     }
   };
 
-  // 캘린더 셀 애니메이션 variants
+  // 캘린더 셀 애니메이션 variants (상호작용 강화)
   const calendarCellVariants = {
     initial: { opacity: 0, y: 15, scale: 0.95 },
     animate: { 
@@ -423,6 +441,39 @@ const MonthlyPlanner = () => {
         delay: index * 0.05
       }
     })
+  };
+  
+  // 일간 보기 항목 애니메이션 (상호작용 강화)
+  const dayTaskItemVariants = {
+    hidden: { 
+      scaleX: 0, 
+      opacity: 0, 
+      originX: 0,
+      transition: { duration: 0.3 }
+    },
+    visible: (i) => ({ 
+      scaleX: 1, 
+      opacity: 1, 
+      originX: 0,
+      transition: { 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 15, 
+        delay: i * 0.05, // 순차적 등장
+        when: "beforeChildren"
+      }
+    }),
+    exit: { 
+      opacity: 0, 
+      scaleX: 0,
+      height: 0, 
+      paddingTop: 0, 
+      paddingBottom: 0,
+      transition: { 
+        duration: 0.4,
+        ease: "easeInOut"
+      }
+    }
   };
 
   const renderCalendar = () => {
@@ -614,6 +665,7 @@ const MonthlyPlanner = () => {
     
     return (
       <motion.div 
+        ref={dayViewRef} // Ref를 스크롤 컨테이너에 연결
         className="flex-1 overflow-y-auto"
         initial={{ opacity: 0, x: viewMode === 'month' ? 50 : -50 }}
         animate={{ opacity: 1, x: 0 }}
@@ -685,7 +737,8 @@ const MonthlyPlanner = () => {
                               e.stopPropagation();
                               toggleEventCompletion(dateKey, event.id);
                             }}
-                            variants={taskItemVariants}
+                            variants={dayTaskItemVariants} // 변경된 variants 적용
+                            custom={eventIndex} // staggerChildren을 위해 index 전달
                             initial="hidden"
                             animate="visible"
                             exit="exit"
@@ -885,8 +938,8 @@ const MonthlyPlanner = () => {
           </div>
         </div>
 
-        {/* 컨텐츠 영역 - Fixed 헤더 높이만큼 패딩 추가 */}
-        <div className="flex-1 flex flex-col" style={{ paddingTop: '100px' }}>
+        {/* 컨텐츠 영역 - 모바일 레이아웃 문제 해결을 위해 반응형 패딩 적용 */}
+        <div className="flex-1 flex flex-col pt-[140px] sm:pt-[100px]">
           {/* 뷰 모드 전환 애니메이션 */}
           <AnimatePresence mode="wait">
             {/* 월간 보기 */}
@@ -1014,14 +1067,15 @@ const MonthlyPlanner = () => {
                   >
                     <h3 className="text-sm font-semibold text-gray-600 mb-2">할 일 목록</h3>
                     <AnimatePresence>
-                      {events[getDateKey(selectedDate)].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)).map(event => {
+                      {events[getDateKey(selectedDate)].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)).map((event, eventIndex) => {
                         const tag = getTagById(event.tagId);
                         return (
                           <motion.div 
                             key={event.id} 
                             className={`flex items-center justify-between p-3 rounded-lg ${event.completed ? 'opacity-50' : ''}`} 
                             style={{ backgroundColor: `${tag?.color}10` }}
-                            variants={taskItemVariants}
+                            variants={dayTaskItemVariants}
+                            custom={eventIndex}
                             initial="hidden"
                             animate="visible"
                             exit="exit"
