@@ -15,7 +15,22 @@ const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
   };
 
   return (
-    <motion.svg
+    <motion.div
+      className="w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer flex-shrink-0 relative"
+      style={{ borderColor: color }}
+      onClick={onClick}
+      initial={false}
+      animate={isChecked ? "checked" : "unchecked"}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+    >
+      {/* 원형 배경 Fade In 채우기 */}
+      <motion.div
+        className="w-full h-full rounded-full absolute"
+        variants={fillVariants}
+        transition={{ duration: 0.3 }}
+      />
+      <motion.svg
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -478,7 +493,7 @@ const MonthlyPlanner = () => {
       const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
       days.push(
-        <
+        <motion.div
           key={day}
           className="border border-gray-100 bg-white cursor-pointer p-1.5 sm:p-2 relative group flex flex-col"
           onClick={() => openEventModal(date)}
@@ -495,21 +510,21 @@ const MonthlyPlanner = () => {
             >
               {day}
             </motion.span>
-            <
+            <motion.div
               initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
               whileHover={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
               className="absolute top-1 right-1"
             >
               <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-            </>
+            </motion.div>
           </div>
           <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1">
             <AnimatePresence>
               {sortedEvents.slice(0, 2).map((event, index) => {
                 const tag = getTagById(event.tagId);
                 return (
-                  <
+                  <motion.div
                     key={event.id}
                     className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-60' : ''}`}
                     style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
@@ -521,22 +536,22 @@ const MonthlyPlanner = () => {
                     custom={index}
                   >
                     {event.title}
-                  </>
+                  </motion.div>
                 );
               })}
             </AnimatePresence>
             {sortedEvents.length > 2 && (
-              < 
+              <motion.div 
                 className="text-xs text-gray-500"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
                 +{sortedEvents.length - 2}
-              </>
+              </motion.div>
             )}
           </div>
-        </>
+        </motion.div>
       );
     }
     
@@ -547,7 +562,7 @@ const MonthlyPlanner = () => {
     const days = getDaysForWeekView;
     
     return (
-      < 
+      <motion.div 
         className="flex-1 flex flex-col"
         initial={{ opacity: 0, x: 60, scale: 0.98 }}
         animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -837,9 +852,9 @@ const MonthlyPlanner = () => {
             >
               <motion.div className="flex items-center gap-4" variants={headerItemVariants}>
                 <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-                  {/* 주간 보기일 경우 X월 X주 형식으로 표시 */}
+                  {/* 주간 보기일 경우 해당 주 범위 표시 */}
                   {viewMode === 'week' 
-                    ? `${currentDate.getFullYear()}년 ${monthNames[currentDate.getMonth()]} ${Math.ceil(currentDate.getDate() / 7)}주`
+                    ? `${currentDate.getFullYear()}년 ${monthNames[getDaysForWeekView[0].getMonth()]} ${getDaysForWeekView[0].getDate()}일 - ${monthNames[getDaysForWeekView[6].getMonth()]} ${getDaysForWeekView[6].getDate()}일`
                     : `${currentDate.getFullYear()}년 ${monthNames[currentDate.getMonth()]}`
                   }
                 </h1>
