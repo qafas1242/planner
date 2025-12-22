@@ -24,11 +24,11 @@ jobs:
           # ★ 여기에 있던 cache: 'npm' 줄을 반드시 지워야 합니다 ★
 
       - name: Install dependencies
-        run: npm install framer-motion
+        run: npm install motion
       - name: Install react
         run: npm install lucide-react
       - name: Install dnd
-        run: npm install dnd-kit
+        run: npm install @dnd-kit/core
 
       - name: Build
         run: npm run build
