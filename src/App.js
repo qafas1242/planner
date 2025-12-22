@@ -15,22 +15,7 @@ const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
   };
 
   return (
-    <motion.div
-      className="w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer flex-shrink-0 relative"
-      style={{ borderColor: color }}
-      onClick={onClick}
-      initial={false}
-      animate={isChecked ? "checked" : "unchecked"}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-    >
-      {/* 원형 배경 Fade In 채우기 */}
-      <motion.div
-        className="w-full h-full rounded-full absolute"
-        variants={fillVariants}
-        transition={{ duration: 0.3 }}
-      />
-      <motion.svg
+    <motion.svg
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -54,6 +39,7 @@ const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
           }}
         />
       </motion.svg>
+    </motion.div>
   );
 };
 
