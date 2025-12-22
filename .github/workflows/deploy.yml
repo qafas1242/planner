@@ -24,7 +24,7 @@ jobs:
           # ★ 여기에 있던 cache: 'npm' 줄을 반드시 지워야 합니다 ★
 
       - name: Install motion
-        run: npm install framer-motion
+        run: npm install framer-motion lucide-react @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities @dnd-kit/keyboard-sensors
 
       - name: Build
         run: npm run build
