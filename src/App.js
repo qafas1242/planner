@@ -948,7 +948,24 @@ const MonthlyPlanner = () => {
                 <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
                   {/* 주간 보기일 경우 해당 주 범위 표시 */}
                   {viewMode === 'week' 
-                    ? `${currentDate.getFullYear()}년 ${monthNames[getDaysForWeekView[0].getMonth()]} ${getDaysForWeekView[0].getDate()}일 - ${monthNames[getDaysForWeekView[6].getMonth()]} ${getDaysForWeekView[6].getDate()}일`
+                    ? (() => {
+                        // 해당 주의 일요일을 기준으로 계산
+                        const sunday = getDaysForWeekView[0];
+                        const year = sunday.getFullYear();
+                        const month = sunday.getMonth();
+                        
+                        // 해당 월의 1일 정보
+                        const firstDayOfMonth = new Date(year, month, 1);
+                        
+                        // 1일의 요일 (0: 일요일, 1: 월요일, ...)
+                        const firstDayWeekday = firstDayOfMonth.getDay();
+                        
+                        // 주차 계산: (현재 날짜 + 1일의 요일 offset) / 7
+                        // 1일이 포함된 주가 무조건 1주가 됩니다.
+                        const weekNum = Math.ceil((sunday.getDate() + firstDayWeekday) / 7);
+                        
+                        return `${year}년 ${monthNames[month]} ${weekNum}주`;
+                      })()
                     : `${currentDate.getFullYear()}년 ${monthNames[currentDate.getMonth()]}`
                   }
                 </h1>
@@ -984,7 +1001,6 @@ const MonthlyPlanner = () => {
                 >
                   {currentViewModeData.icon}
                   <span className="hidden sm:inline">{currentViewModeData.text}</span>
-                  <span className="text-gray-500 text-xs ml-1">({nextViewModeData.text}로 전환)</span>
                 </motion.button>
                 <motion.button
                   onClick={exportData}
