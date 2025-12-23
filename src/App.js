@@ -207,17 +207,25 @@ const MonthlyPlanner = () => {
 
   const handleLogout = async () => {
     try {
+      // 먼저 isDataLoaded를 false로 설정하여 Auto Save 방지
+      setIsDataLoaded(false);
+      
+      // Firebase 로그아웃 실행
       await signOut(auth);
-      setEvents({}); // 로그아웃 시 화면 초기화
-      setTags([ // 태그 기본값으로 초기화
+      
+      // 로그아웃 후 상태 초기화
+      setEvents({});
+      setTags([
         { id: 1, name: '업무', color: '#3B82F6' },
         { id: 2, name: '개인', color: '#10B981' },
         { id: 3, name: '운동', color: '#F59E0B' },
         { id: 4, name: '공부', color: '#8B5CF6' }
       ]);
+      
       alert("로그아웃 되었습니다.");
     } catch (error) {
       console.error("Logout error:", error);
+      alert(`로그아웃 중 오류가 발생했습니다: ${error.message}`);
     }
   };
 
