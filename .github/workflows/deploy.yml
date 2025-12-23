@@ -23,7 +23,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install motion lucide-react @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities @dnd-kit/modifiers
+        run: npm install motion lucide-react @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities @dnd-kit/modifiers firebase
 
       - name: Build
         run: npm run build
