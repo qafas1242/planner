@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List, User, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List, User, LogOut, Grid3x3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Firebase Imports ---
@@ -239,6 +239,10 @@ const MonthlyPlanner = () => {
   };
 
   const handleLogout = async () => {
+    // 확인 안내문 추가
+    const confirmLogout = window.confirm("정말 로그아웃 하시겠습니까?");
+    if (!confirmLogout) return; // 취소하면 함수 종료
+    
     try {
       // 먼저 isDataLoaded를 false로 설정하여 Auto Save 방지
       setIsDataLoaded(false);
@@ -290,10 +294,16 @@ const MonthlyPlanner = () => {
     const dateKey = getDateKey(date);
     const dateElement = document.getElementById(dateKey);
     if (dateElement && dayViewRef.current) {
-      // 스크롤 컨테이너를 명시적으로 사용하여 스크롤
       const container = dayViewRef.current;
-      const containerRect = container.getBoundingClientRect();
-      const elementRect = dateElement.getBoundingClientRect();
+      
+      // 해당 날짜의 맨 위로 정확히 스크롤 (중앙이 아닌 상단 정렬)
+      const scrollPosition = dateElement.offsetTop - container.offsetTop;
+      container.scrollTo({
+        top: scrollPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
       
       // 요소의 중앙이 컨테이너의 중앙에 오도록 계산
       const scrollPosition = elementRect.top - containerRect.top + container.scrollTop - (containerRect.height / 2) + (elementRect.height / 2);
@@ -308,10 +318,10 @@ const MonthlyPlanner = () => {
     const today = new Date();
     setCurrentDate(today);
     if (viewMode === 'day') {
-      // goToToday는 이미 일간 보기일 때만 호출되므로, 뷰 전환 애니메이션을 기다릴 필요 없이 바로 스크롤 시도
-      setTimeout(() => scrollToDate(today), 50);
+      // 일간 모드에서는 오늘 날짜로 정확히 스크롤
+      setTimeout(() => scrollToDate(today), 100);
     } else if (viewMode === 'week') {
-      // 주간 보기에서는 해당 주가 보이도록 스크롤 (구현 생략, 현재 주간 보기 로직은 현재 날짜를 기준으로 주를 표시)
+      // 주간 보기에서는 해당 주가 보이도록 (현재 로직 유지)
     } else {
       // 월간 보기에서는 해당 월의 1일로 이동
       setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -942,12 +952,18 @@ const MonthlyPlanner = () => {
   };
   useEffect(() => {
     if (viewMode === 'day') {
-      // goToToday에서 이미 스크롤 로직을 처리하므로, 여기서는 현재 날짜가 오늘이 아닐 경우에만 첫 날로 스크롤
       const today = new Date();
       if (getDateKey(currentDate) !== getDateKey(today)) {
         setTimeout(() => {
           const firstDayKey = getDateKey(getDaysForDayView()[0]);
-          document.getElementById(firstDayKey)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          const firstDayElement = document.getElementById(firstDayKey);
+          if (firstDayElement && dayViewRef.current) {
+            // 컨테이너의 맨 위로 정확히 스크롤
+            dayViewRef.current.scrollTo({
+              top: firstDayElement.offsetTop - dayViewRef.current.offsetTop,
+              behavior: 'smooth'
+            });
+          }
         }, 100);
       }
     }
@@ -955,7 +971,7 @@ const MonthlyPlanner = () => {
   // 뷰 모드 버튼 텍스트를 위한 맵
   const viewModeMap = {
     month: { icon: <Calendar className="w-4 h-4" />, text: '월간' },
-    week: { icon: <List className="w-4 h-4" />, text: '주간' },
+    week: { icon: <Grid3x3 className="w-4 h-4" />, text: '주간' }, // 그리드 아이콘
     day: { icon: <List className="w-4 h-4" />, text: '일간' },
   };
   const getNextViewMode = (current) => {
