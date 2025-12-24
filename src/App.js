@@ -190,17 +190,50 @@ const MonthlyPlanner = () => {
         alert("회원가입 성공! 자동 로그인됩니다.");
       } else {
         await signInWithEmailAndPassword(auth, authEmail, authPassword);
-        // alert("로그인 성공!"); // UX상 너무 잦은 알림 방지 위해 생략 가능
       }
       setShowAuthModal(false);
       setAuthEmail('');
       setAuthPassword('');
     } catch (error) {
+      // 실제 에러 확인을 위한 로깅
+      console.error("Firebase Auth Error:", error.code, error.message);
+      
       let msg = "오류가 발생했습니다.";
-      if (error.code === 'auth/email-already-in-use') msg = "이미 사용 중인 이메일입니다.";
-      if (error.code === 'auth/invalid-email') msg = "유효하지 않은 이메일 형식입니다.";
-      if (error.code === 'auth/weak-password') msg = "비밀번호는 6자리 이상이어야 합니다.";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') msg = "이메일 또는 비밀번호가 올바르지 않습니다.";
+      
+      // 회원가입 에러
+      if (error.code === 'auth/email-already-in-use') {
+        msg = "이미 사용 중인 이메일입니다.";
+      } 
+      else if (error.code === 'auth/invalid-email') {
+        msg = "유효하지 않은 이메일 형식입니다.";
+      } 
+      else if (error.code === 'auth/weak-password') {
+        msg = "비밀번호는 6자리 이상이어야 합니다.";
+      }
+      // ⭐ 로그인 에러 (업데이트된 에러 코드)
+      else if (error.code === 'auth/invalid-credential' || 
+               error.code === 'auth/invalid-login-credentials' ||
+               error.code === 'auth/user-not-found' || 
+               error.code === 'auth/wrong-password') {
+        msg = "이메일 또는 비밀번호가 올바르지 않습니다.";
+      }
+      // 계정 비활성화
+      else if (error.code === 'auth/user-disabled') {
+        msg = "비활성화된 계정입니다.";
+      }
+      // 너무 많은 시도
+      else if (error.code === 'auth/too-many-requests') {
+        msg = "너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.";
+      }
+      // 네트워크 에러
+      else if (error.code === 'auth/network-request-failed') {
+        msg = "네트워크 연결을 확인해주세요.";
+      }
+      // 알 수 없는 에러 (디버깅용)
+      else {
+        msg = `오류가 발생했습니다. (${error.code})`;
+      }
+      
       setAuthError(msg);
     }
   };
