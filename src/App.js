@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List, User, LogOut, LayoutWeek } from 'lucide-react'; // LayoutWeek 아이콘 추가
+import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List, User, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Firebase Imports ---
@@ -97,7 +97,7 @@ const MonthlyPlanner = () => {
     { id: 3, name: '운동', color: '#F59E0B' },
     { id: 4, name: '공부', color: '#8B5CF6' }
   ]);
-  // 'month', 'week', 'day'
+  // 'month', 'day'
   const [viewMode, setViewMode] = useState('day'); 
   const [selectedDate, setSelectedDate] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -278,18 +278,11 @@ const MonthlyPlanner = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + direction, 1));
   };
   
-  // 주간 보기 이동 함수
-  const navigateWeek = (direction) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(currentDate.getDate() + direction * 7);
-    setCurrentDate(newDate);
-  };
-
   const getDateKey = (date) => {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   };
   
-  // 2. 일간 모드에서 오늘 버튼 눌렀을때 오늘 날짜가 중앙에 오도록 자동 스크롤 되도록 수정
+  // 일간 모드에서 오늘 버튼 눌렀을때 오늘 날짜가 중앙에 오도록 자동 스크롤 되도록 수정
   const scrollToDate = (date) => {
     const dateKey = getDateKey(date);
     const dateElement = document.getElementById(dateKey);
@@ -314,22 +307,10 @@ const MonthlyPlanner = () => {
     if (viewMode === 'day') {
       // 뷰 전환 애니메이션(400ms)이 끝난 후 스크롤이 실행되도록 지연 시간을 넉넉하게 줌
       setTimeout(() => scrollToDate(today), 450);
-    } else if (viewMode === 'week') {
-      // 주간 보기에서는 해당 주가 보이도록 스크롤 (구현 생략, 현재 주간 보기 로직은 현재 날짜를 기준으로 주를 표시)
     } else {
       // 월간 보기에서는 해당 월의 1일로 이동
       setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
     }
-  };
-
-  // 주간 보기에서 날짜 클릭 시 일간 보기로 전환하는 함수
-  const switchToDayView = (date) => {
-    setCurrentDate(date);
-    setViewMode('day');
-    
-    // 뷰 모드 전환 애니메이션(400ms)이 끝난 후 스크롤이 실행되도록 지연 시간을 넉넉하게 줌
-    // 400ms + 50ms = 450ms
-    setTimeout(() => scrollToDate(date), 450);
   };
 
   // 할 일 추가 시 애니메이션을 위한 variants
@@ -491,20 +472,6 @@ const MonthlyPlanner = () => {
       days.push(new Date(year, month, day));
     }
     
-    return days;
-  }, [currentDate]);
-  
-  // 주간 보기를 위한 7일 배열 계산
-  const getDaysForWeekView = useMemo(() => {
-    const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - startOfWeek.getDay()); // 일요일로 설정
-    
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      days.push(day);
-    }
     return days;
   }, [currentDate]);
   
@@ -707,108 +674,7 @@ const MonthlyPlanner = () => {
     
     return days;
   };
-  const renderWeekView = () => {
-    const days = getDaysForWeekView;
-    return (
-      <motion.div 
-        className="flex-1 flex flex-col"
-        initial={{ opacity: 0, x: 60, scale: 0.98 }}
-        animate={{ opacity: 1, x: 0, scale: 1 }}
-        exit={{ opacity: 0, x: -60, scale: 0.98 }}
-        transition={{ duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
-      >
-        {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 gap-0 mb-2 px-4 md:px-6">
-          {dayNames.map((day, i) => (
-            <motion.div 
-              key={day} 
-              className={`text-center py-2 text-sm font-semibold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'}`}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.3 }}
-            >
-              {day}
-            </motion.div>
-          ))}
-        </div>
-        
-        {/* 주간 캘린더 그리드 */}
-        <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-xl overflow-hidden shadow-sm flex-1 mx-4 md:mx-6">
-          {days.map((date, i) => {
-            const dateKey = getDateKey(date);
-            const dayEvents = events[dateKey] || [];
-            const isToday = new Date().toDateString() === date.toDateString();
-            const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-            
-            return (
-              <motion.div
-                key={dateKey}
-                className={`border border-gray-100 bg-white cursor-pointer p-1.5 sm:p-2 relative group flex flex-col ${i === 0 ? 'rounded-tl-xl rounded-bl-xl' : i === 6 ? 'rounded-tr-xl rounded-br-xl' : ''}`}
-                onClick={() => switchToDayView(date)} // 날짜 클릭 시 일간 보기로 전환
-                variants={calendarCellVariants}
-                initial="initial"
-                animate="animate"
-                whileHover="hover"
-                transition={{ duration: 0.3, delay: i * 0.05 }}
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <motion.span 
-                    className={`text-xs sm:text-sm font-medium ${isToday ? 'bg-blue-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs' : 'text-gray-700'}`}
-                    whileHover={isToday ? { scale: 1.1, rotate: 5 } : {}}
-                  >
-                    {date.getDate()}
-                  </motion.span>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
-                    whileHover={{ opacity: 1, scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
-                    className="absolute top-1 right-1"
-                  >
-                    <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                  </motion.div>
-                </div>
-                <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1">
-                  <AnimatePresence>
-                    {sortedEvents.slice(0, 2).map((event, index) => {
-                      const tag = getTagById(event.tagId);
-                      return (
-                        <motion.div
-                          key={event.id}
-                          className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-60' : ''}`}
-                          style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
-                          onClick={(e) => e.stopPropagation()}
-                          variants={calendarEventVariants}
-                          initial="hidden"
-                          animate="visible"
-                          exit={{ scaleX: 0, opacity: 0, transition: { duration: 0.3 } }}
-                          custom={index}
-                        >
-                          {event.title}
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                  {sortedEvents.length > 2 && (
-                    <motion.div 
-                      className="text-xs text-gray-500"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      +{sortedEvents.length - 2}
-                    </motion.div>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-        <div className="p-4 md:p-6 text-center text-gray-500 text-sm">
-          날짜를 클릭하면 일간 보기로 전환됩니다.
-        </div>
-      </motion.div>
-    );
-  };
+  
   const renderDayView = () => {
     const days = getDaysForDayView;
     return (
@@ -950,16 +816,12 @@ const MonthlyPlanner = () => {
     );
   };
   
-  // 3. 일간 모드에서 월 전환할 때 가능한 최대까지 위로 자동 스크롤시키고
+  // 일간 모드에서 월 전환할 때 가능한 최대까지 위로 자동 스크롤시키고
   useEffect(() => {
     if (viewMode === 'day') {
       // goToToday에서 이미 스크롤 로직을 처리하므로, 여기서는 현재 날짜가 오늘이 아닐 경우에만 첫 날로 스크롤
-      const today = new Date();
       
       // 월이 변경되었거나, 뷰 모드가 'day'로 전환되었을 때
-      // currentDate의 월이 변경되었는지 확인하는 더 정확한 방법이 필요하지만,
-      // 여기서는 간단히 currentDate가 변경될 때마다 첫 날로 스크롤합니다.
-      // (goToToday가 아닌 경우)
       if (dayViewRef.current) {
         // 뷰 전환 애니메이션(400ms)이 끝난 후 스크롤이 실행되도록 지연 시간을 넉넉하게 줌
         setTimeout(() => {
@@ -969,22 +831,20 @@ const MonthlyPlanner = () => {
     }
   }, [viewMode, currentDate]); // currentDate가 변경되면 (월 전환 포함) 실행
 
-  // 1. 주간 모드에도 독자적인 아이콘 넣고
+  // 뷰 모드 버튼 텍스트를 위한 맵 (주간 모드 제거)
   const viewModeMap = {
     month: { icon: <Calendar className="w-4 h-4" />, text: '월간' },
-    week: { icon: <LayoutWeek className="w-4 h-4" />, text: '주간' }, // LayoutWeek 아이콘 사용
     day: { icon: <List className="w-4 h-4" />, text: '일간' },
   };
   
+  // 뷰 모드 전환 로직 수정 (month <-> day)
   const getNextViewMode = (current) => {
-    if (current === 'month') return 'week';
-    if (current === 'week') return 'day';
+    if (current === 'month') return 'day';
     return 'month';
   };
 
   const getPrevViewMode = (current) => {
-    if (current === 'day') return 'week';
-    if (current === 'week') return 'month';
+    if (current === 'day') return 'month';
     return 'day';
   };
 
@@ -1006,31 +866,13 @@ const MonthlyPlanner = () => {
             >
               <motion.div className="flex items-center gap-4" variants={headerItemVariants}>
                 <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-                  {/* 주간 보기일 경우 해당 주 범위 표시 */}
-                  {viewMode === 'week' 
-                    ? (() => {
-                        // 해당 주의 일요일을 기준으로 계산
-                        const sunday = getDaysForWeekView[0];
-                        const year = sunday.getFullYear();
-                        const month = sunday.getMonth();
-                        
-                        // 해당 월의 1일 정보
-                        const firstDayOfMonth = new Date(year, month, 1);
-                        // 1일의 요일 (0: 일요일, 1: 월요일, ...)
-                        const firstDayWeekday = firstDayOfMonth.getDay();
-                        
-                        // 주차 계산: (현재 날짜 + 1일의 요일 offset) / 7
-                        // 1일이 포함된 주가 무조건 1주가 됩니다.
-                        const weekNum = Math.ceil((sunday.getDate() + firstDayWeekday) / 7);
-                        
-                        return `${year}년 ${monthNames[month]} ${weekNum}주`;
-                      })()
-                    : `${currentDate.getFullYear()}년 ${monthNames[currentDate.getMonth()]}`
-                  }
+                  {/* 월간 보기만 남았으므로 월 표시만 */}
+                  {`${currentDate.getFullYear()}년 ${monthNames[currentDate.getMonth()]}`}
                 </h1>
                 <div className="flex gap-1">
                   <motion.button
-                    onClick={() => viewMode === 'week' ? navigateWeek(-1) : navigateMonth(-1)}
+                    // 월간 모드만 남았으므로 navigateMonth만 사용
+                    onClick={() => navigateMonth(-1)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     whileHover={{ scale: 1.15, x: -2 }}
                     whileTap={{ scale: 0.9 }}
@@ -1038,7 +880,8 @@ const MonthlyPlanner = () => {
                     <ChevronLeft className="w-5 h-5 text-gray-600" />
                   </motion.button>
                   <motion.button
-                    onClick={() => viewMode === 'week' ? navigateWeek(1) : navigateMonth(1)}
+                    // 월간 모드만 남았으므로 navigateMonth만 사용
+                    onClick={() => navigateMonth(1)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     whileHover={{ scale: 1.15, x: 2 }}
                     whileTap={{ scale: 0.9 }}
@@ -1164,13 +1007,6 @@ const MonthlyPlanner = () => {
                 <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-xl overflow-hidden shadow-sm flex-1">
                   {renderCalendar()}
                 </div>
-              </motion.div>
-            )}
-
-            {/* 주간 보기 */}
-            {viewMode === 'week' && (
-              <motion.div key="week-view" className="flex-1 flex flex-col">
-                {renderWeekView()}
               </motion.div>
             )}
 
