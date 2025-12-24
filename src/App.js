@@ -936,14 +936,6 @@ const MonthlyPlanner = () => {
                   <Tag className="w-4 h-4" />
                   <span className="hidden sm:inline">태그 관리</span>
                 </motion.button>
-                <motion.button
-                  onClick={goToToday}
-                  className="px-3 md:px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  whileHover={{ scale: 1.08, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  오늘
-                </motion.button>
                 
                 {/* --- Firebase Login/Logout Button --- */}
                 {user ? (
