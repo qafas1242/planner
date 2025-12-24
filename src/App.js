@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List, User, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List, User, LogOut, LayoutWeek } from 'lucide-react'; // LayoutWeek 아이콘 추가
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Firebase Imports ---
@@ -273,9 +273,11 @@ const MonthlyPlanner = () => {
     
     return { daysInMonth, startingDayOfWeek };
   };
+  
   const navigateMonth = (direction) => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + direction, 1));
   };
+  
   // 주간 보기 이동 함수
   const navigateWeek = (direction) => {
     const newDate = new Date(currentDate);
@@ -286,6 +288,8 @@ const MonthlyPlanner = () => {
   const getDateKey = (date) => {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   };
+  
+  // 2. 일간 모드에서 오늘 버튼 눌렀을때 오늘 날짜가 중앙에 오도록 자동 스크롤 되도록 수정
   const scrollToDate = (date) => {
     const dateKey = getDateKey(date);
     const dateElement = document.getElementById(dateKey);
@@ -308,8 +312,8 @@ const MonthlyPlanner = () => {
     const today = new Date();
     setCurrentDate(today);
     if (viewMode === 'day') {
-      // goToToday는 이미 일간 보기일 때만 호출되므로, 뷰 전환 애니메이션을 기다릴 필요 없이 바로 스크롤 시도
-      setTimeout(() => scrollToDate(today), 50);
+      // 뷰 전환 애니메이션(400ms)이 끝난 후 스크롤이 실행되도록 지연 시간을 넉넉하게 줌
+      setTimeout(() => scrollToDate(today), 450);
     } else if (viewMode === 'week') {
       // 주간 보기에서는 해당 주가 보이도록 스크롤 (구현 생략, 현재 주간 보기 로직은 현재 날짜를 기준으로 주를 표시)
     } else {
@@ -442,7 +446,8 @@ const MonthlyPlanner = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `calendar-data-${new Date().toISOString().split('T')[0]}.json`;
+    const today = new Date().toISOString().split('T')[0];
+    a.download = `calendar-data-${today}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -476,7 +481,7 @@ const MonthlyPlanner = () => {
     setNewTagColor(customColor);
     setShowColorPicker(false);
   };
-  const getDaysForDayView = () => {
+  const getDaysForDayView = useMemo(() => {
     const days = [];
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -487,7 +492,8 @@ const MonthlyPlanner = () => {
     }
     
     return days;
-  };
+  }, [currentDate]);
+  
   // 주간 보기를 위한 7일 배열 계산
   const getDaysForWeekView = useMemo(() => {
     const startOfWeek = new Date(currentDate);
@@ -501,6 +507,7 @@ const MonthlyPlanner = () => {
     }
     return days;
   }, [currentDate]);
+  
   // 모달 애니메이션 variants
   const modalVariants = {
     hidden: { opacity: 0, scale: 0.9, y: 20 },
@@ -712,46 +719,45 @@ const MonthlyPlanner = () => {
       >
         {/* 요일 헤더 */}
         <div className="grid grid-cols-7 gap-0 mb-2 px-4 md:px-6">
-          {days.map((date, i) => {
-            const dayOfWeek = dayNames[date.getDay()];
-            const isToday = new Date().toDateString() === date.toDateString();
-            return (
-              <motion.div 
-                key={i} 
-                className={`text-center py-2 text-sm font-semibold cursor-pointer transition-colors rounded-lg ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'}`}
-                onClick={() => switchToDayView(date)} // 클릭 이벤트 추가
-                whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.05)', scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <span className={isToday ? 'bg-blue-500 text-white w-6 h-6 flex items-center justify-center rounded-full mx-auto' : ''}>
-                  {dayOfWeek}
-                </span>
-                <div className="text-xs mt-1">{date.getDate()}</div>
-              </motion.div>
-            );
-          })}
+          {dayNames.map((day, i) => (
+            <motion.div 
+              key={day} 
+              className={`text-center py-2 text-sm font-semibold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'}`}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.3 }}
+            >
+              {day}
+            </motion.div>
+          ))}
         </div>
-
-        {/* 주간 일정 그리드 */}
-        <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-xl overflow-hidden shadow-sm flex-1">
+        
+        {/* 주간 캘린더 그리드 */}
+        <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-xl overflow-hidden shadow-sm flex-1 mx-4 md:mx-6">
           {days.map((date, i) => {
             const dateKey = getDateKey(date);
             const dayEvents = events[dateKey] || [];
             const isToday = new Date().toDateString() === date.toDateString();
             const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-
+            
             return (
               <motion.div
-                key={i}
-                className={`border border-gray-100 bg-white cursor-pointer p-1.5 sm:p-2 relative group flex flex-col ${isToday ? 'bg-blue-50/30' : ''}`}
-                onClick={() => openEventModal(date)}
+                key={dateKey}
+                className={`border border-gray-100 bg-white cursor-pointer p-1.5 sm:p-2 relative group flex flex-col ${i === 0 ? 'rounded-tl-xl rounded-bl-xl' : i === 6 ? 'rounded-tr-xl rounded-br-xl' : ''}`}
+                onClick={() => switchToDayView(date)} // 날짜 클릭 시 일간 보기로 전환
                 variants={calendarCellVariants}
                 initial="initial"
                 animate="animate"
                 whileHover="hover"
                 transition={{ duration: 0.3, delay: i * 0.05 }}
               >
-                <div className="flex justify-end items-start mb-1">
+                <div className="flex justify-between items-start mb-1">
+                  <motion.span 
+                    className={`text-xs sm:text-sm font-medium ${isToday ? 'bg-blue-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs' : 'text-gray-700'}`}
+                    whileHover={isToday ? { scale: 1.1, rotate: 5 } : {}}
+                  >
+                    {date.getDate()}
+                  </motion.span>
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
                     whileHover={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -763,7 +769,7 @@ const MonthlyPlanner = () => {
                 </div>
                 <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1">
                   <AnimatePresence>
-                    {sortedEvents.slice(0, 3).map((event, index) => {
+                    {sortedEvents.slice(0, 2).map((event, index) => {
                       const tag = getTagById(event.tagId);
                       return (
                         <motion.div
@@ -782,14 +788,14 @@ const MonthlyPlanner = () => {
                       );
                     })}
                   </AnimatePresence>
-                  {sortedEvents.length > 3 && (
+                  {sortedEvents.length > 2 && (
                     <motion.div 
                       className="text-xs text-gray-500"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.2 }}
                     >
-                      +{sortedEvents.length - 3}
+                      +{sortedEvents.length - 2}
                     </motion.div>
                   )}
                 </div>
@@ -797,11 +803,14 @@ const MonthlyPlanner = () => {
             );
           })}
         </div>
+        <div className="p-4 md:p-6 text-center text-gray-500 text-sm">
+          날짜를 클릭하면 일간 보기로 전환됩니다.
+        </div>
       </motion.div>
     );
   };
   const renderDayView = () => {
-    const days = getDaysForDayView();
+    const days = getDaysForDayView;
     return (
       <motion.div 
         ref={dayViewRef} // Ref를 스크롤 컨테이너에 연결
@@ -940,24 +949,33 @@ const MonthlyPlanner = () => {
       </motion.div>
     );
   };
+  
+  // 3. 일간 모드에서 월 전환할 때 가능한 최대까지 위로 자동 스크롤시키고
   useEffect(() => {
     if (viewMode === 'day') {
       // goToToday에서 이미 스크롤 로직을 처리하므로, 여기서는 현재 날짜가 오늘이 아닐 경우에만 첫 날로 스크롤
       const today = new Date();
-      if (getDateKey(currentDate) !== getDateKey(today)) {
+      
+      // 월이 변경되었거나, 뷰 모드가 'day'로 전환되었을 때
+      // currentDate의 월이 변경되었는지 확인하는 더 정확한 방법이 필요하지만,
+      // 여기서는 간단히 currentDate가 변경될 때마다 첫 날로 스크롤합니다.
+      // (goToToday가 아닌 경우)
+      if (dayViewRef.current) {
+        // 뷰 전환 애니메이션(400ms)이 끝난 후 스크롤이 실행되도록 지연 시간을 넉넉하게 줌
         setTimeout(() => {
-          const firstDayKey = getDateKey(getDaysForDayView()[0]);
-          document.getElementById(firstDayKey)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+          dayViewRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 450);
       }
     }
-  }, [viewMode, currentDate]);
-  // 뷰 모드 버튼 텍스트를 위한 맵
+  }, [viewMode, currentDate]); // currentDate가 변경되면 (월 전환 포함) 실행
+
+  // 1. 주간 모드에도 독자적인 아이콘 넣고
   const viewModeMap = {
     month: { icon: <Calendar className="w-4 h-4" />, text: '월간' },
-    week: { icon: <List className="w-4 h-4" />, text: '주간' },
+    week: { icon: <LayoutWeek className="w-4 h-4" />, text: '주간' }, // LayoutWeek 아이콘 사용
     day: { icon: <List className="w-4 h-4" />, text: '일간' },
   };
+  
   const getNextViewMode = (current) => {
     if (current === 'month') return 'week';
     if (current === 'week') return 'day';
@@ -972,6 +990,7 @@ const MonthlyPlanner = () => {
 
   const currentViewModeData = viewModeMap[viewMode];
   const nextViewModeData = viewModeMap[getNextViewMode(viewMode)];
+  
   return (
     <div className="h-screen bg-white flex flex-col" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col">
@@ -997,7 +1016,6 @@ const MonthlyPlanner = () => {
                         
                         // 해당 월의 1일 정보
                         const firstDayOfMonth = new Date(year, month, 1);
-                        
                         // 1일의 요일 (0: 일요일, 1: 월요일, ...)
                         const firstDayWeekday = firstDayOfMonth.getDay();
                         
@@ -1215,14 +1233,15 @@ const MonthlyPlanner = () => {
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                             selectedTagId === tag.id 
                               ? 'ring-2 ring-offset-2' 
-                              : 'hover:opacity-80'
+                              : 'hover:bg-gray-50'
                           }`}
                           style={{ 
-                            backgroundColor: `${tag.color}${selectedTagId === tag.id ? '' : '20'}`,
-                            color: selectedTagId === tag.id ? 'white' : tag.color,
+                            backgroundColor: selectedTagId === tag.id ? `${tag.color}20` : 'white',
+                            color: tag.color,
+                            borderColor: tag.color,
                             ringColor: tag.color
                           }}
-                          whileHover={{ scale: 1.08, y: -2 }}
+                          whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
                           {tag.name}
@@ -1232,73 +1251,56 @@ const MonthlyPlanner = () => {
                   </div>
                 </div>
 
-                {/* 해당 날짜의 할 일 목록 */}
-                {selectedDate && events[getDateKey(selectedDate)]?.length > 0 && (
-                  <motion.div 
-                    className="mb-4 space-y-2"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    <h3 className="text-sm font-semibold text-gray-600 mb-2">할 일 목록</h3>
-                    <AnimatePresence>
-                      {events[getDateKey(selectedDate)].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)).map((event, eventIndex) => {
-                        const tag = getTagById(event.tagId);
-                        return (
-                          <motion.div 
-                            key={event.id} 
-                            className={`flex items-center justify-between p-3 rounded-lg ${event.completed ? 'opacity-50' : ''}`} 
-                            style={{ backgroundColor: `${tag?.color}10` }}
-                            variants={dayTaskItemVariants}
-                            custom={eventIndex}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                            layout
-                          >
-                            <div className="flex items-center gap-2 flex-1 overflow-hidden">
-                              <AnimatedCheckbox 
-                                isChecked={event.completed} 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleEventCompletion(getDateKey(selectedDate), event.id);
-                                }}
-                                color={tag?.color}
-                              />
-                              <motion.span 
-                                className={`text-sm font-medium text-gray-900 truncate ${event.completed ? 'line-through' : ''}`}
-                                variants={taskTitleVariants}
-                              >
-                                {event.title}
-                              </motion.span>
-                              <span className="text-xs px-2 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}>
-                                {tag?.name}
-                              </span>
-                            </div>
-                            <motion.button
-                              onClick={() => deleteEvent(getDateKey(selectedDate), event.id)}
-                              className="p-1 hover:bg-red-100 rounded transition-colors flex-shrink-0"
-                              whileHover={{ scale: 1.2, rotate: 90 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              <X className="w-4 h-4 text-red-500" />
-                            </motion.button>
-                          </motion.div>
-                        );
-                      })}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-
                 <motion.button
                   onClick={addEvent}
-                  disabled={!eventTitle.trim() || !selectedTagId}
-                  className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  whileHover={{ scale: 1.03, y: -2 }}
+                  className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  할 일 추가
+                  일정 추가
                 </motion.button>
+                
+                {/* 해당 날짜의 기존 일정 목록 */}
+                {selectedDate && events[getDateKey(selectedDate)] && events[getDateKey(selectedDate)].length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800">오늘의 할 일</h3>
+                    <div className="space-y-3">
+                      <AnimatePresence initial={false}>
+                        {events[getDateKey(selectedDate)].map(event => {
+                          const tag = getTagById(event.tagId);
+                          return (
+                            <motion.div
+                              key={event.id}
+                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden ${event.completed ? 'opacity-50' : 'hover:shadow-sm'}`}
+                              style={{ backgroundColor: `${tag?.color}10` }}
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <AnimatedCheckbox 
+                                isChecked={event.completed} 
+                                onClick={() => toggleEventCompletion(getDateKey(selectedDate), event.id)}
+                                color={tag?.color}
+                              />
+                              <div className={`flex-1 font-medium text-gray-900 ${event.completed ? 'line-through' : ''}`}>
+                                {event.title}
+                              </div>
+                              <motion.button
+                                onClick={() => deleteEvent(getDateKey(selectedDate), event.id)}
+                                className="p-1 hover:bg-red-100 rounded transition-colors"
+                                whileHover={{ scale: 1.2, rotate: 90 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <X className="w-4 h-4 text-red-500" />
+                              </motion.button>
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}
@@ -1316,7 +1318,7 @@ const MonthlyPlanner = () => {
               exit="exit"
             >
               <motion.div 
-                className="bg-white rounded-2xl shadow-2xl w-[500px] p-6 max-h-[80vh] overflow-y-auto" 
+                className="bg-white rounded-2xl shadow-2xl w-96 p-6 max-h-[80vh] overflow-y-auto" 
                 onClick={(e) => e.stopPropagation()}
                 variants={modalVariants}
               >
@@ -1333,155 +1335,117 @@ const MonthlyPlanner = () => {
                 </div>
 
                 <div className="space-y-4 mb-6">
-                  <input
-                    type="text"
-                    placeholder="새 태그 이름"
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">색상 선택</label>
-                    <div className="grid grid-cols-7 gap-2">
-                      {colorOptions.map(color => (
-                        <motion.button
-                          key={color}
-                          onClick={() => selectColor(color)}
-                          className={`w-10 h-10 rounded-lg transition-all relative`}
-                          style={{ backgroundColor: color }}
-                          whileHover={{ scale: 1.15, rotate: 8 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          {newTagColor === color && (
-                            <motion.div 
-                              className="absolute inset-0 rounded-lg border-3 border-white ring-2 ring-gray-400"
-                              initial={{ scale: 0, rotate: -180 }}
-                              animate={{ 
-                                scale: 1, 
-                                rotate: 0,
-                                transition: { 
-                                  type: "spring", 
-                                  stiffness: 500, 
-                                  damping: 25 
-                                }
-                              }}
-                            />
-                          )}
-                        </motion.button>
-                      ))}
-                      <motion.button
-                        onClick={() => setShowColorPicker(!showColorPicker)}
-                        className={`w-10 h-10 rounded-lg transition-all flex items-center justify-center text-white text-lg font-bold ${
-                          showColorPicker ? 'ring-2 ring-offset-2 ring-gray-400' : ''
-                        }`}
-                        style={{
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%)'
-                        }}
-                        title="커스텀 색상"
-                        whileHover={{ scale: 1.15, rotate: 180 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        {showColorPicker ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                      </motion.button>
-                    </div>
+                  {/* 새 태그 추가 */}
+                  <div className="border p-4 rounded-lg space-y-3">
+                    <h3 className="font-medium text-gray-700">새 태그 추가</h3>
+                    <input
+                      type="text"
+                      placeholder="태그 이름"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
                     
-                    <AnimatePresence>
-                      {showColorPicker && (
-                        <motion.div 
-                          className="mt-3 p-4 bg-gray-50 rounded-lg overflow-hidden"
-                          initial={{ opacity: 0, height: 0, y: -10 }}
-                          animate={{ opacity: 1, height: "auto", y: 0 }}
-                          exit={{ opacity: 0, height: 0, y: -10 }}
-                          transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 25 }}
+                    {/* 색상 선택 */}
+                    <div className="relative">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">색상:</span>
+                          <div 
+                            className="w-6 h-6 rounded-full cursor-pointer border-2 border-gray-300" 
+                            style={{ backgroundColor: newTagColor }}
+                            onClick={() => setShowColorPicker(prev => !prev)}
+                          />
+                        </div>
+                        <motion.button
+                          onClick={addTag}
+                          className="px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                         >
-                          <label className="block text-sm font-medium text-gray-700 mb-2">커스텀 색상</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="color"
-                              value={customColor}
-                              onChange={(e) => setCustomColor(e.target.value)}
-                              className="w-16 h-10 rounded cursor-pointer"
-                            />
-                            <input
-                              type="text"
-                              value={customColor}
-                              onChange={(e) => setCustomColor(e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="#000000"
-                            />
-                            <motion.button
-                              onClick={selectCustomColor}
-                              className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600"
-                              whileHover={{ scale: 1.08, y: -2 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              적용
-                            </motion.button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                          추가
+                        </motion.button>
+                      </div>
+                      
+                      {/* 색상 선택기 팝업 */}
+                      <AnimatePresence>
+                        {showColorPicker && (
+                          <motion.div
+                            className="absolute top-full mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-xl z-10"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="grid grid-cols-5 gap-2">
+                              {colorOptions.map(color => (
+                                <motion.div
+                                  key={color}
+                                  className="w-6 h-6 rounded-full cursor-pointer border-2 border-white shadow-md"
+                                  style={{ backgroundColor: color, outline: newTagColor === color ? `2px solid ${color}` : 'none' }}
+                                  onClick={() => selectColor(color)}
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                />
+                              ))}
+                            </div>
+                            <div className="mt-3 flex gap-2">
+                              <input
+                                type="color"
+                                value={customColor}
+                                onChange={(e) => setCustomColor(e.target.value)}
+                                className="w-8 h-8 p-0 border-none cursor-pointer"
+                              />
+                              <motion.button
+                                onClick={selectCustomColor}
+                                className="px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded-lg hover:bg-gray-300 transition-colors"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                선택
+                              </motion.button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
 
-                  <motion.button
-                    onClick={addTag}
-                    disabled={!newTagName.trim()}
-                    className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    whileHover={{ scale: 1.03, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    태그 추가
-                  </motion.button>
-                </div>
-
-                {/* 기존 태그 목록 */}
-                <motion.div 
-                  className="space-y-2"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                >
-                  <h3 className="text-sm font-semibold text-gray-600 mb-2">기존 태그</h3>
-                  <AnimatePresence>
-                    {tags.map((tag, index) => (
-                      <motion.div 
-                        key={tag.id} 
-                        className="flex items-center justify-between p-3 rounded-lg" 
+                  {/* 기존 태그 목록 */}
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-gray-700">현재 태그</h3>
+                    {tags.map(tag => (
+                      <motion.div
+                        key={tag.id}
+                        className="flex items-center justify-between p-2 rounded-lg"
                         style={{ backgroundColor: `${tag.color}10` }}
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 50, transition: { duration: 0.3 } }}
-                        transition={{ delay: index * 0.05, type: "spring", stiffness: 300, damping: 25 }}
-                        layout
-                        whileHover={{ scale: 1.02, x: 5 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2 }}
                       >
                         <div className="flex items-center gap-2">
-                          <motion.div 
-                            className="w-4 h-4 rounded" 
-                            style={{ backgroundColor: tag.color }}
-                            whileHover={{ scale: 1.2, rotate: 45 }}
-                          />
-                          <span className="text-sm font-medium text-gray-900">{tag.name}</span>
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
+                          <span className="text-sm font-medium" style={{ color: tag.color }}>{tag.name}</span>
                         </div>
                         <motion.button
                           onClick={() => deleteTag(tag.id)}
                           className="p-1 hover:bg-red-100 rounded transition-colors"
-                          whileHover={{ scale: 1.2, rotate: 90 }}
+                          whileHover={{ scale: 1.2 }}
                           whileTap={{ scale: 0.9 }}
                         >
                           <X className="w-4 h-4 text-red-500" />
                         </motion.button>
                       </motion.div>
                     ))}
-                  </AnimatePresence>
-                </motion.div>
+                  </div>
+                </div>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* --- Authentication Modal --- */}
+        {/* 인증 모달 (로그인/회원가입) */}
         <AnimatePresence>
           {showAuthModal && (
             <motion.div 
@@ -1497,7 +1461,7 @@ const MonthlyPlanner = () => {
                 onClick={(e) => e.stopPropagation()}
                 variants={modalVariants}
               >
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">
                     {authMode === 'login' ? '로그인' : '회원가입'}
                   </h2>
@@ -1512,56 +1476,56 @@ const MonthlyPlanner = () => {
                 </div>
 
                 <form onSubmit={handleAuth} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
-                    <input
-                      type="email"
-                      value={authEmail}
-                      onChange={(e) => setAuthEmail(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="example@email.com"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
-                    <input
-                      type="password"
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="******"
-                      required
-                    />
-                  </div>
+                  <input
+                    type="email"
+                    placeholder="이메일"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="비밀번호 (6자리 이상)"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
                   
                   {authError && (
-                    <div className="text-red-500 text-sm">{authError}</div>
+                    <motion.p 
+                      className="text-red-500 text-sm bg-red-50 p-2 rounded-lg"
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {authError}
+                    </motion.p>
                   )}
 
                   <motion.button
                     type="submit"
-                    className="w-full py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors"
-                    whileHover={{ scale: 1.03, y: -2 }}
+                    className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+                    whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
                     {authMode === 'login' ? '로그인' : '회원가입'}
                   </motion.button>
-
-                  <div className="text-center text-sm text-gray-600 mt-4">
-                    {authMode === 'login' ? '계정이 없으신가요? ' : '이미 계정이 있으신가요? '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode(authMode === 'login' ? 'signup' : 'login');
-                        setAuthError('');
-                      }}
-                      className="text-blue-600 font-medium hover:underline"
-                    >
-                      {authMode === 'login' ? '회원가입' : '로그인'}
-                    </button>
-                  </div>
                 </form>
+
+                <div className="mt-4 text-center">
+                  <motion.button
+                    onClick={() => {
+                      setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                      setAuthError(''); // 모드 변경 시 에러 메시지 초기화
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {authMode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
+                  </motion.button>
+                </div>
               </motion.div>
             </motion.div>
           )}
