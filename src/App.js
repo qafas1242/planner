@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List, User, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,61 +37,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Animated Checkbox Component
-const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
-  const checkmarkVariants = {
-    checked: { pathLength: 1, opacity: 1 },
-    unchecked: { pathLength: 0, opacity: 0 }
-  };
-  const fillVariants = {
-    checked: { opacity: 1, scale: 1, backgroundColor: color },
-    unchecked: { opacity: 0, scale: 0.5, backgroundColor: "#fff" }
-  };
-  return (
-    <motion.div
-      // 일간 모드 크기(200% 확대)로 복원
-      className="w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer flex-shrink-0 relative"
-      style={{ borderColor: color }}
-      onClick={onClick}
-      initial={false}
-      animate={isChecked ? "checked" : "unchecked"}
-      // 호버 애니메이션 삭제 (유지)
-    >
-      {/* 원형 배경 Fade In 채우기 */}
-      <motion.div
-        className="w-full h-full rounded-full absolute"
-        variants={fillVariants}
-        transition={{ duration: 0.3 }}
-      />
-      <motion.svg
-        // 체크마크 크기 복원
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="white"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="relative z-10"
-      >
-        {/* 체크 표시를 왼쪽에서 오른쪽으로 꺾으면서 그리기 */}
-        <motion.path
-          d="M6 12l4 4l8 -8"
-          variants={checkmarkVariants}
-          style={{ pathLength: 0 }}
-          transition={{ 
-            type: "tween", 
-            duration: 0.3, 
-            ease: "easeOut",
-            delay: 0.1 // 배경 채우기 후 시작
-          }}
-        />
-      </motion.svg>
-    </motion.div>
-  );
-};
-
 const MonthlyPlanner = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState({});
@@ -102,7 +46,6 @@ const MonthlyPlanner = () => {
     { id: 3, name: '운동', color: '#F59E0B' },
     { id: 4, name: '공부', color: '#8B5CF6' }
   ]);
-  // 'month', 'day'
   const [viewMode, setViewMode] = useState('day'); 
   const [selectedDate, setSelectedDate] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -113,7 +56,7 @@ const MonthlyPlanner = () => {
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [customColor, setCustomColor] = useState('#3B82F6');
-  // 스크롤을 위한 Ref 추가
+  
   const dayViewRef = useRef(null);
   const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
   const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
@@ -127,28 +70,23 @@ const MonthlyPlanner = () => {
   // --- Firebase Auth & Data State ---
   const [user, setUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [authMode, setAuthMode] = useState('login'); 
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false); // 자동 로그인 상태 추가
-  const [isDataLoaded, setIsDataLoaded] = useState(false); // DB 로딩 완료 여부 (덮어쓰기 방지)
+  const [rememberMe, setRememberMe] = useState(false); 
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // --- Firebase Logic ---
-
-  // 1. 자동 로그인 설정 불러오기
   useEffect(() => {
-    // 자동 로그인 설정 확인
     const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
     setRememberMe(savedRememberMe);
   }, []);
 
-  // 2. Auth Listener: 로그인 상태 감지
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // 로그인 성공 시 DB에서 데이터 불러오기
         try {
           const docRef = doc(db, "users", currentUser.uid);
           const docSnap = await getDoc(docRef);
@@ -161,19 +99,16 @@ const MonthlyPlanner = () => {
         } catch (error) {
           console.error("Error fetching data:", error);
         } finally {
-          setIsDataLoaded(true); // 데이터 로딩 완료 표시 (이후부터 저장 가능)
+          setIsDataLoaded(true);
         }
       } else {
-        // 로그아웃 시 상태 초기화 (옵션: 로컬 데이터 유지하려면 이 부분 조정)
         setIsDataLoaded(false);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // 2. Auto Save: 데이터 변경 시 DB 자동 저장
   useEffect(() => {
-    // 유저가 있고, 초기 데이터 로딩이 완료된 상태에서만 저장 수행
     if (user && isDataLoaded) {
       const saveData = async () => {
         try {
@@ -185,19 +120,15 @@ const MonthlyPlanner = () => {
           console.error("Error saving data:", error);
         }
       };
-
-      // 디바운싱 제거: 데이터 변경 시 즉시 저장 (DB 쓰기 횟수 증가 가능성 있음)
       saveData();
     }
   }, [events, tags, user, isDataLoaded]);
 
-  // 3. Auth Actions
   const handleAuth = async (e) => {
     e.preventDefault();
     setAuthError('');
     
     try {
-      // Persistence 설정
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       
       if (authMode === 'signup') {
@@ -207,51 +138,21 @@ const MonthlyPlanner = () => {
         await signInWithEmailAndPassword(auth, authEmail, authPassword);
       }
       
-      // 자동 로그인 설정 저장
       localStorage.setItem('rememberMe', rememberMe.toString());
       
       setShowAuthModal(false);
       setAuthEmail('');
       setAuthPassword('');
     } catch (error) {
-      // 실제 에러 확인을 위한 로깅
       console.error("Firebase Auth Error:", error.code, error.message);
-      
       let msg = "오류가 발생했습니다.";
-      
-      // 회원가입 에러
-      if (error.code === 'auth/email-already-in-use') {
-        msg = "이미 사용 중인 이메일입니다.";
-      } 
-      else if (error.code === 'auth/invalid-email') {
-        msg = "유효하지 않은 이메일 형식입니다.";
-      } 
-      else if (error.code === 'auth/weak-password') {
-        msg = "비밀번호는 6자리 이상이어야 합니다.";
-      }
-      // ⭐ 로그인 에러 (업데이트된 에러 코드)
-      else if (error.code === 'auth/invalid-credential' || 
-               error.code === 'auth/invalid-login-credentials' ||
-               error.code === 'auth/user-not-found' || 
-               error.code === 'auth/wrong-password') {
-        msg = "이메일 또는 비밀번호가 올바르지 않습니다.";
-      }
-      // 계정 비활성화
-      else if (error.code === 'auth/user-disabled') {
-        msg = "비활성화된 계정입니다.";
-      }
-      // 너무 많은 시도
-      else if (error.code === 'auth/too-many-requests') {
-        msg = "너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.";
-      }
-      // 네트워크 에러
-      else if (error.code === 'auth/network-request-failed') {
-        msg = "네트워크 연결을 확인해주세요.";
-      }
-      // 알 수 없는 에러 (디버깅용)
-      else {
-        msg = `오류가 발생했습니다. (${error.code})`;
-      }
+      if (error.code === 'auth/email-already-in-use') msg = "이미 사용 중인 이메일입니다.";
+      else if (error.code === 'auth/invalid-email') msg = "유효하지 않은 이메일 형식입니다.";
+      else if (error.code === 'auth/weak-password') msg = "비밀번호는 6자리 이상이어야 합니다.";
+      else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') msg = "이메일 또는 비밀번호가 올바르지 않습니다.";
+      else if (error.code === 'auth/user-disabled') msg = "비활성화된 계정입니다.";
+      else if (error.code === 'auth/too-many-requests') msg = "너무 많은 로그인 시도가 있었습니다.";
+      else if (error.code === 'auth/network-request-failed') msg = "네트워크 연결을 확인해주세요.";
       
       setAuthError(msg);
     }
@@ -259,18 +160,9 @@ const MonthlyPlanner = () => {
 
   const handleLogout = async () => {
     try {
-      // 먼저 isDataLoaded를 false로 설정하여 Auto Save 방지
       setIsDataLoaded(false);
-      
-      // 자동 로그인이 비활성화되어 있으면 localStorage 초기화
-      if (!rememberMe) {
-        localStorage.removeItem('rememberMe');
-      }
-      
-      // Firebase 로그아웃 실행
+      if (!rememberMe) localStorage.removeItem('rememberMe');
       await signOut(auth);
-      
-      // 로그아웃 후 상태 초기화
       setEvents({});
       setTags([
         { id: 1, name: '업무', color: '#3B82F6' },
@@ -278,14 +170,11 @@ const MonthlyPlanner = () => {
         { id: 3, name: '운동', color: '#F59E0B' },
         { id: 4, name: '공부', color: '#8B5CF6' }
       ]);
-      
       alert("로그아웃 되었습니다.");
     } catch (error) {
-      console.error("Logout error:", error);
       alert(`로그아웃 중 오류가 발생했습니다: ${error.message}`);
     }
   };
-
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -294,7 +183,6 @@ const MonthlyPlanner = () => {
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
-    
     return { daysInMonth, startingDayOfWeek };
   };
   
@@ -306,85 +194,31 @@ const MonthlyPlanner = () => {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   };
   
-  // 일간 모드에서 오늘 버튼 눌렀을때 오늘 날짜가 중앙에 오도록 자동 스크롤 되도록 수정
   const scrollToDate = (date) => {
     const dateKey = getDateKey(date);
     const dateElement = document.getElementById(dateKey);
     if (dateElement && dayViewRef.current) {
-      // 스크롤 컨테이너를 명시적으로 사용하여 스크롤
       const container = dayViewRef.current;
       const containerRect = container.getBoundingClientRect();
       const elementRect = dateElement.getBoundingClientRect();
-      
-      // 요소의 중앙이 컨테이너의 중앙에 오도록 계산
       const scrollPosition = elementRect.top - containerRect.top + container.scrollTop - (containerRect.height / 2) + (elementRect.height / 2);
-      container.scrollTo({
-        top: scrollPosition
-      });
+      container.scrollTo({ top: scrollPosition, behavior: 'smooth' });
     }
   };
 
   const goToToday = () => {
-  const today = new Date();
-  
-  if (viewMode === 'day') {
-    setCurrentDate(today);
-    // 뷰 전환 애니메이션 없이 즉시 스크롤
-    scrollToDate(today);
-    } else {
-      // 월간 보기에서는 해당 월의 1일로 이동
-      setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
-    }
-  };
-
-  // 할 일 추가 시 애니메이션을 위한 variants
-  const taskItemVariants = {
-    hidden: { 
-      scaleX: 0, 
-      opacity: 0, 
-      originX: 0,
-      transition: { duration: 0.3 }
-    },
-    visible: { 
-      scaleX: 1, 
-      opacity: 1, 
-      originX: 0,
-      transition: { 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 15, 
-        when: "beforeChildren"
-      }
-    },
-    exit: { 
-      opacity: 0, 
-      scaleX: 0,
-      height: 0, 
-      paddingTop: 0, 
-      paddingBottom: 0,
-      transition: { 
-        duration: 0.4,
-        ease: "easeInOut"
-      }
-    }
-  };
-  // 할 일 제목 Fade In 애니메이션 variants
-  const taskTitleVariants = {
-    hidden: { opacity: 0, y: 8 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      transition: { 
-        delay: 0.1, // 타원 확장 시작(0s) 후 0.1초 뒤에 시작
-        duration: 0.5,
-        ease: "easeOut"
-      } 
+    const today = new Date();
+    setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    
+    if (viewMode === 'day') {
+      setTimeout(() => {
+        scrollToDate(today);
+      }, 50);
     }
   };
 
   const addEvent = () => {
     if (!eventTitle.trim() || !selectedTagId) return;
-    
     const dateKey = getDateKey(selectedDate);
     const newEvent = {
       id: Date.now(),
@@ -438,15 +272,11 @@ const MonthlyPlanner = () => {
     setSelectedDate(date);
     setShowEventModal(true);
   };
-  const getTagById = (tagId) => {
-    return tags.find(t => t.id === tagId);
-  };
+  
+  const getTagById = (tagId) => tags.find(t => t.id === tagId);
+  
   const exportData = () => {
-    const data = {
-      events,
-      tags,
-      exportDate: new Date().toISOString()
-    };
+    const data = { events, tags, exportDate: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -458,6 +288,7 @@ const MonthlyPlanner = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+  
   const importData = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -486,905 +317,637 @@ const MonthlyPlanner = () => {
     setNewTagColor(customColor);
     setShowColorPicker(false);
   };
+
   const getDaysForDayView = useMemo(() => {
     const days = [];
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0).getDate();
     for (let day = 1; day <= lastDay; day++) {
       days.push(new Date(year, month, day));
     }
-    
     return days;
   }, [currentDate]);
-  
-  // 모달 애니메이션 variants
-  const modalVariants = {
-    hidden: { opacity: 0, scale: 0.9, y: 20 },
-    visible: { 
-      opacity: 1, 
-      scale: 1, 
-      y: 0,
-      transition: { 
-        type: "spring",
-        stiffness: 300,
-        damping: 25,
-        duration: 0.3
-      } 
-    },
-    exit: { 
-      opacity: 0, 
-      scale: 0.9, 
-      y: 20,
-      transition: { 
-        duration: 0.2, 
-        ease: "easeIn" 
-      } 
-    }
-  };
-  // 배경 오버레이 애니메이션 variants
-  const backdropVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.25 } },
-    exit: { opacity: 0, transition: { duration: 0.2 } }
-  };
-  // 헤더 항목 애니메이션 variants
-  const headerItemVariants = {
-    hidden: { opacity: 0, y: -15, scale: 0.95 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1,
-      transition: { 
-        type: "spring",
-        stiffness: 200,
-        damping: 15,
-        duration: 0.4
-      } 
-    }
-  };
 
-  // 캘린더 셀 애니메이션 variants (상호작용 강화)
-  const calendarCellVariants = {
-    initial: { opacity: 0, y: 15, scale: 0.95 },
-    animate: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 250,
-        damping: 20
-      }
-    },
-    hover: { 
-      // 크기 조절 및 위치 이동 제거, 그림자 효과만 남김
-      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-      transition: { 
-        duration: 0.2
-      } 
+  const renderCalendar = () => {
+    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
+    const days = [];
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(<div key={`empty-${i}`} className="bg-gray-50/20" />);
     }
-  };
-  // 캘린더 뷰 할 일 항목 애니메이션 variants (타원 성장 효과)
-  const calendarEventVariants = {
-    hidden: { 
-      scaleX: 0, 
-      opacity: 0, 
-      originX: 0 
-    },
-    visible: (index) => ({ 
-      scaleX: 1, 
-      opacity: 1, 
-      originX: 0,
-      transition: { 
-        type: "spring",
-        stiffness: 300,
-        damping: 20,
-        delay: index * 0.05
-      }
-    })
-  };
-  // 일간 보기 항목 애니메이션 (상호작용 강화)
-  const dayTaskItemVariants = {
-    // 불필요한 애니메이션을 제거하고, 목록에서 추가/삭제 시 부드러운 전환을 위한 기본 애니메이션만 남깁니다.
-    hidden: { opacity: 0, height: 0, marginTop: 0, marginBottom: 0 },
-    visible: { opacity: 1, height: 'auto', marginTop: 8, marginBottom: 8, transition: { duration: 0.3 } },
-    exit: { opacity: 0, height: 0, marginTop: 0, marginBottom: 0, transition: { duration: 0.3 } }
-  };
-	  const renderCalendar = () => {
-	    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
-	    const days = [];
-	    for (let i = 0; i < startingDayOfWeek; i++) {
-	      days.push(<div key={`empty-${i}`} className="bg-gray-50/30 border border-gray-100" />);
-	    }
-	    
-	    for (let day = 1; day <= daysInMonth; day++) {
+    
+    for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
       const dateKey = getDateKey(date);
       const dayEvents = events[dateKey] || [];
       const isToday = new Date().toDateString() === date.toDateString();
-      // 완료된 항목(a.completed: true)을 미완료 항목(b.completed: false)보다 뒤로(1) 보내 목록의 가장 아래로 정렬합니다.
-          const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+      const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+      
       days.push(
         <motion.div
           key={day}
-          className="border border-gray-100 bg-white cursor-pointer p-1.5 sm:p-2 relative group flex flex-col"
+          className={`min-h-[100px] border-b border-r border-gray-100 p-2 relative group flex flex-col transition-colors ${isToday ? 'bg-blue-50/10' : 'bg-white'}`}
           onClick={() => openEventModal(date)}
-          variants={calendarCellVariants}
-          initial="initial"
-          animate="animate"
-          whileHover="hover"
-          transition={{ duration: 0.3, delay: (day + startingDayOfWeek) * 0.015 }}
+          whileHover={{ backgroundColor: "rgba(249, 250, 251, 1)" }}
         >
-          <div className="flex justify-between items-start mb-1">
-              <motion.span 
-	              className={`text-xs sm:text-sm font-medium transition-colors duration-200 ${isToday ? 'bg-blue-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs' : 'text-gray-700'}`}
-	              // 크기 조절 및 회전 애니메이션 제거
-	              whileHover={isToday ? { backgroundColor: '#3B82F6' } : { color: '#1F2937' }}
-	            >
-              {day}
-            </motion.span>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
-              whileHover={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
-              className="absolute top-1 right-1"
+          <div className="flex justify-between items-start mb-1.5">
+            <span 
+              className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all duration-200 
+                ${isToday 
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200' 
+                  : 'text-gray-700 group-hover:bg-gray-100'}`}
             >
-              <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-            </motion.div>
+              {day}
+            </span>
           </div>
-          <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1">
-            <AnimatePresence>
-              {sortedEvents.slice(0, 2).map((event, index) => {
-                const tag = getTagById(event.tagId);
-                return (
-                  <motion.div
-                    key={event.id}
-                    // gap-1을 gap-0.5로 변경하여 여백을 줄입니다.
-                    className={`flex items-center gap-0.5 text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-50' : ''}`}
-                    style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // 월간 모드에서 체크박스 클릭 시 완료 상태 토글
-                      toggleEventCompletion(dateKey, event.id);
-                    }}
-                    variants={calendarEventVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit={{ scaleX: 0, opacity: 0, transition: { duration: 0.3 } }}
-                    custom={index}
-                  >
-                    {/* 체크박스 추가 (월간 모드 크기 50% 적용) */}
-                    <div className="transform scale-50 origin-left">
-                      <AnimatedCheckbox 
-                        isChecked={event.completed} 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleEventCompletion(dateKey, event.id);
-                        }}
-                        color={tag?.color}
-                      />
-                    </div>
-                    <span className="truncate">{event.title}</span>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-            {sortedEvents.length > 2 && (
-              <motion.div 
-                className="text-xs text-gray-500"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                +{sortedEvents.length - 2}
-              </motion.div>
+          <div className="space-y-1 overflow-hidden flex-1">
+            {sortedEvents.slice(0, 3).map((event) => {
+              const tag = getTagById(event.tagId);
+              return (
+                <div
+                  key={event.id}
+                  className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[11px] font-medium truncate group/item transition-all hover:brightness-95
+                    ${event.completed ? 'opacity-50 line-through' : ''}`}
+                  style={{ backgroundColor: `${tag?.color}15`, color: tag?.color }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleEventCompletion(dateKey, event.id);
+                  }}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${event.completed ? 'bg-gray-400' : ''}`} style={{ backgroundColor: event.completed ? undefined : tag?.color }} />
+                  <span className="truncate">{event.title}</span>
+                </div>
+              );
+            })}
+            {sortedEvents.length > 3 && (
+              <div className="text-[10px] text-gray-400 pl-1 mt-0.5 font-medium">
+                +{sortedEvents.length - 3} more
+              </div>
             )}
           </div>
         </motion.div>
       );
     }
     
+    const totalSlots = days.length;
+    const remainingSlots = 42 - totalSlots; 
+    for (let i = 0; i < remainingSlots; i++) {
+        days.push(<div key={`empty-end-${i}`} className="bg-gray-50/20 border-b border-r border-gray-100 min-h-[100px]" />);
+    }
+
     return days;
   };
   
   const renderDayView = () => {
     const days = getDaysForDayView;
-	  return (
-	    <motion.div 
-	      key="day-view" // key를 day-view로 수정
-	      ref={dayViewRef} // Ref를 스크롤 컨테이너에 연결
-	      className="flex-1 overflow-y-auto"
-	      // 월간 <-> 일간 전환 애니메이션을 단순한 Fade 효과로 변경
-	      initial={{ opacity: 0 }}
-	      animate={{ opacity: 1 }}
-	      exit={{ opacity: 0 }}
-	      transition={{ duration: 0.3 }}
-	    >
+    return (
+      <div 
+        ref={dayViewRef}
+        className="flex-1 overflow-y-auto bg-gray-50 scroll-smooth pb-10"
+      >
+        <div className="max-w-3xl mx-auto pt-6 px-4 space-y-4">
         {days.map((date, index) => {
           const dateKey = getDateKey(date);
           const dayEvents = events[dateKey] || [];
           const isToday = new Date().toDateString() === date.toDateString();
           const dayOfWeek = dayNames[date.getDay()];
-          
-          // 완료된 항목(a.completed: true)을 미완료 항목(b.completed: false)보다 뒤로(1) 보내 목록의 가장 아래로 정렬합니다.
           const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
           return (
             <motion.div
               key={index}
               id={getDateKey(date)}
-              className={`border-b border-gray-200 p-4 ${isToday ? 'bg-blue-50/30' : 'bg-white'}`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.02, duration: 0.3 }}
+              className={`bg-white rounded-2xl p-5 shadow-sm border border-gray-100 ${isToday ? 'ring-2 ring-blue-500/10' : ''}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.01 }}
             >
-              <div className="max-w-4xl mx-auto">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-50">
                   <div className="flex items-center gap-3">
-                    <motion.div 
-	                      className={`text-2xl font-bold transition-colors duration-200 ${isToday ? 'text-blue-600' : 'text-gray-900'}`}
-	                      // 크기 조절 애니메이션 제거, 색상 변경만 남김
-	                      whileHover={isToday ? { color: '#2563EB' } : { color: '#111827' }}
-	                    >
-                      {date.getDate()}
-                    </motion.div>
+                    <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 ${isToday ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}>
+                      <span className="text-xl font-bold">{date.getDate()}</span>
+                      <span className="text-[10px] font-medium uppercase">{dayOfWeek}</span>
+                    </div>
                     <div>
-                      <div className={`text-sm font-medium ${isToday ? 'text-blue-600' : 'text-gray-600'}`}>
-                        {dayOfWeek}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {date.getFullYear()}년 {date.getMonth() + 1}월
-                      </div>
+                      {isToday && <div className="text-xs font-bold text-blue-600">오늘</div>}
                     </div>
                   </div>
                   <motion.button
                     onClick={() => openEventModal(date)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    whileHover={{ scale: 1.15, rotate: 90 }}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-blue-600 origin-center"
+                    whileHover={{ 
+                      rotate: 90, 
+                      transition: { type: "spring", stiffness: 300, damping: 10 } 
+                    }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <Plus className="w-5 h-5 text-gray-600" />
+                    <Plus className="w-5 h-5" />
                   </motion.button>
                 </div>
                 
                 {sortedEvents.length > 0 ? (
-                  <motion.div 
-                    className="space-y-2"
-                    initial="hidden"
-                    animate="visible"
-                    variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
-                  >
-                    <AnimatePresence>
-                      {sortedEvents.map((event, eventIndex) => {
-                        const tag = getTagById(event.tagId);
-                        return (
-                                       <motion.div
-                              key={event.id}
-                              // 체크된 항목은 투명도를 낮춥니다.
-                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden transition-opacity duration-300 ${event.completed ? 'opacity-50' : ''}`}
-                              style={{ backgroundColor: `${tag?.color}10` }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleEventCompletion(dateKey, event.id);
-                              }}
-                              variants={dayTaskItemVariants}
-                              initial="hidden"
-                              animate="visible"
-                              exit="exit"
-                              // 일간 모드 작업 항목에 마우스를 올렸을 때 크기가 커지는 애니메이션 삭제 (whileHover 속성 제거)
-                            >
-                            <AnimatedCheckbox 
-                              isChecked={event.completed} 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleEventCompletion(dateKey, event.id);
-                              }}
-                              color={tag?.color}
-                            />
-                            
-                            <motion.div 
-                              className="flex-1 flex items-center gap-2" // 태그 이름을 옆에 표시하기 위해 flex-1 flex items-center gap-2 추가
-                              variants={taskTitleVariants}
-                            >
-                              <div className={`font-medium text-gray-900 ${event.completed ? 'line-through' : ''}`}>{event.title}</div>
-                              {/* 할 일 이름 옆에 태그 이름 표시 */}
-                              <div className="text-xs px-2 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}>
+                  <div className="space-y-2">
+                    {sortedEvents.map((event) => {
+                      const tag = getTagById(event.tagId);
+                      return (
+                        <div
+                          key={event.id}
+                          className={`group flex items-center gap-3 p-3 rounded-xl border border-transparent transition-all hover:border-gray-100 hover:shadow-sm hover:bg-white
+                            ${event.completed ? 'bg-gray-50/50 opacity-60' : 'bg-gray-50'}`}
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              toggleEventCompletion(dateKey, event.id);
+                          }}
+                        >
+                          <div
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center cursor-pointer flex-shrink-0 transition-colors ${event.completed ? 'bg-gray-400 border-gray-400' : 'bg-white border-gray-300'}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleEventCompletion(dateKey, event.id);
+                            }}
+                          >
+                            {event.completed && <div className="w-2 h-2 bg-white rounded-full" />}
+                          </div>
+                          
+                          <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 min-w-0">
+                            <div className={`font-medium text-gray-800 truncate ${event.completed ? 'line-through text-gray-400' : ''}`}>
+                              {event.title}
+                            </div>
+                            <div className="flex-shrink-0">
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium inline-block" 
+                                style={{ backgroundColor: `${tag?.color}15`, color: tag?.color }}>
                                 {tag?.name}
-                              </div>
-                            </motion.div>
-                            <motion.button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteEvent(dateKey, event.id);
-                              }}
-                              className="p-1 hover:bg-red-100 rounded transition-colors"
-                              whileHover={{ scale: 1.2, rotate: 90 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
-                              <X className="w-4 h-4 text-red-500" />
-                            </motion.button>
-                          </motion.div>
-                        );
-                      })}
-                    </AnimatePresence>
-                  </motion.div>
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteEvent(dateKey, event.id);
+                            }}
+                            className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg transition-all"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
-                  <motion.div 
-                    className="text-center py-8 text-gray-400 text-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    일정이 없습니다
-                  </motion.div>
+                  <div className="text-center py-6 text-gray-300 text-sm">일정이 없습니다</div>
                 )}
-              </div>
             </motion.div>
           );
         })}
-      </motion.div>
+        </div>
+      </div>
     );
   };
   
-  // 일간 모드에서 월 전환할 때 가능한 최대까지 위로 자동 스크롤시키고
   useEffect(() => {
-    if (viewMode === 'day') {
-      // goToToday에서 이미 스크롤 로직을 처리하므로, 여기서는 현재 날짜가 오늘이 아닐 경우에만 첫 날로 스크롤
-      
-      // 월이 변경되었거나, 뷰 모드가 'day'로 전환되었을 때
-      if (dayViewRef.current) {
-        // 뷰 전환 애니메이션(400ms)이 끝난 후 스크롤이 실행되도록 지연 시간을 넉넉하게 줌
+    const isTodayInThisMonth = (date) => {
+      const today = new Date();
+      return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth();
+    };
+
+    if (viewMode === 'day' && dayViewRef.current) {
+      if (!isTodayInThisMonth(currentDate)) {
         setTimeout(() => {
-          dayViewRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+          if (dayViewRef.current) dayViewRef.current.scrollTo({ top: 0, behavior: 'smooth' });
         }, 450);
       }
     }
-  }, [viewMode, currentDate]); // currentDate가 변경되면 (월 전환 포함) 실행
+  }, [viewMode]);
 
-  // 뷰 모드 버튼 텍스트를 위한 맵 (주간 모드 제거)
-  const viewModeMap = {
-    month: { icon: <Calendar className="w-4 h-4" />, text: '월간' },
-    day: { icon: <List className="w-4 h-4" />, text: '일간' },
-  };
-  
-  // 뷰 모드 전환 로직 수정 (month <-> day)
-  const getNextViewMode = (current) => {
-    if (current === 'month') return 'day';
-    return 'month';
-  };
-
-  const getPrevViewMode = (current) => {
-    if (current === 'day') return 'month';
-    return 'day';
-  };
-
-  const currentViewModeData = viewModeMap[viewMode];
-  const nextViewModeData = viewModeMap[getNextViewMode(viewMode)];
-  
   return (
-    <div className="h-screen bg-white flex flex-col" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}>
-      <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col">
-        {/* 메뉴를 감싸는 Fixed Wrapper */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
-            {/* 헤더 */}
-            <motion.div 
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-              initial="hidden"
-              animate="visible"
-              variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
+    <div className="h-screen bg-gray-50 flex flex-col text-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+      {/* Header */}
+      <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-800 tracking-tight">
+              {currentDate.getFullYear()}년 <span className="text-blue-600">{monthNames[currentDate.getMonth()]}</span>
+            </h1>
+            <div className="flex bg-gray-100 rounded-lg p-0.5">
+              <button onClick={() => navigateMonth(-1)} className="p-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-500 hover:text-gray-900">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => navigateMonth(1)} className="p-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-500 hover:text-gray-900">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <button
+              onClick={goToToday}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
             >
-              <motion.div className="flex items-center gap-4" variants={headerItemVariants}>
-                <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-                  {/* 월간 보기만 남았으므로 월 표시만 */}
-                  {`${currentDate.getFullYear()}년 ${monthNames[currentDate.getMonth()]}`}
-                </h1>
-                <div className="flex gap-1">
-                  <motion.button
-                    // 월간 모드만 남았으므로 navigateMonth만 사용
-                    onClick={() => navigateMonth(-1)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    whileHover={{ scale: 1.15, x: -2 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <ChevronLeft className="w-5 h-5 text-gray-600" />
-                  </motion.button>
-                  <motion.button
-                    // 월간 모드만 남았으므로 navigateMonth만 사용
-                    onClick={() => navigateMonth(1)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    whileHover={{ scale: 1.15, x: 2 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <ChevronRight className="w-5 h-5 text-gray-600" />
-                  </motion.button>
-                </div>
-              </motion.div>
-              <motion.div className="flex flex-wrap gap-2" variants={headerItemVariants}>
-                <motion.button
-                  onClick={() => setViewMode(getNextViewMode(viewMode))}
-                  className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                    viewMode !== 'month' 
-                      ? 'bg-blue-100 text-blue-600' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                  whileHover={{ scale: 1.08, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {currentViewModeData.icon}
-                  <span className="hidden sm:inline">{currentViewModeData.text}</span>
-                </motion.button>
-                <motion.button
-                  onClick={exportData}
-                  className="px-3 md:px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-                  whileHover={{ scale: 1.08, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">내보내기</span>
-                </motion.button>
-                <motion.label 
-                  className="px-3 md:px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
-                  whileHover={{ scale: 1.08, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Upload className="w-4 h-4" />
-                  <span className="hidden sm:inline">불러오기</span>
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={importData}
-                    className="hidden"
-                  />
-                </motion.label>
-                <motion.button
-                  onClick={() => setShowTagModal(true)}
-                  className="px-3 md:px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-                  whileHover={{ scale: 1.08, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Tag className="w-4 h-4" />
-                  <span className="hidden sm:inline">태그 관리</span>
-                </motion.button>
-                
-                {/* --- Firebase Login/Logout Button --- */}
-                {user ? (
-                  <motion.button
-                    onClick={handleLogout}
-                    className="px-3 md:px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2"
-                    whileHover={{ scale: 1.08, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span className="hidden sm:inline">로그아웃</span>
-                  </motion.button>
-                ) : (
-                  <motion.button
-                    onClick={() => setShowAuthModal(true)}
-                    className="px-3 md:px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2"
-                    whileHover={{ scale: 1.08, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <User className="w-4 h-4" />
-                    <span className="hidden sm:inline">로그인</span>
-                  </motion.button>
-                )}
+              오늘
+            </button>
+          </div>
 
-              </motion.div>
-            </motion.div>
-            {/* 요청에 따라 태그 나열 제거 */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+             <div className="flex bg-gray-100/80 p-1 rounded-xl gap-1">
+              <button
+                onClick={() => setViewMode('month')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${
+                  viewMode === 'month' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                <span>월간</span>
+              </button>
+              <button
+                onClick={() => setViewMode('day')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${
+                  viewMode === 'day' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <List className="w-4 h-4" />
+                <span>일간</span>
+              </button>
+             </div>
+
+             <div className="w-px h-6 bg-gray-200 mx-2" />
+
+            <div className="flex gap-1">
+              <button onClick={exportData} className="p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors" title="내보내기">
+                <Download className="w-4 h-4" />
+              </button>
+              <label className="p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors cursor-pointer" title="불러오기">
+                <Upload className="w-4 h-4" />
+                <input type="file" accept=".json" onChange={importData} className="hidden" />
+              </label>
+              <button onClick={() => setShowTagModal(true)} className="p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors" title="태그 관리">
+                <Tag className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="w-px h-6 bg-gray-200 mx-2" />
+
+            {user ? (
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">로그아웃</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-4 py-1.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200 rounded-lg transition-all flex items-center gap-2"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>로그인</span>
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* 컨텐츠 영역 - 모바일 레이아웃 문제 해결을 위해 반응형 패딩 적용 */}
-        <div className="flex-1 flex flex-col pt-[140px] sm:pt-[100px]">
-          {/* 뷰 모드 전환 애니메이션 */}
-          <AnimatePresence mode="wait">
-            {/* 월간 보기 */}
-            {viewMode === 'month' && (
-              <motion.div
-                key="month-view"
-                initial={{ opacity: 0, x: 60, scale: 0.98 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -60, scale: 0.98 }}
-                transition={{ duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
-                className="flex flex-col flex-1 px-4 md:px-6"
-              >
-                {/* 요일 헤더 */}
-                <div className="grid grid-cols-7 gap-0 mb-2">
-                  {dayNames.map((day, i) => (
-                    <motion.div 
-                      key={day} 
-                      className={`text-center py-2 text-sm font-semibold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'}`}
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05, duration: 0.3 }}
-                    >
-                      {day}
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* 캘린더 그리드 */}
-                <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-xl overflow-hidden shadow-sm flex-1">
-                  {renderCalendar()}
-                </div>
-              </motion.div>
-            )}
-
-            {/* 일간 보기 */}
-            {viewMode === 'day' && (
-              <motion.div key="day-view" className="flex-1 flex flex-col">
-                {renderDayView()}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* 일정 추가 모달 */}
-        <AnimatePresence>
-          {showEventModal && (
-            <motion.div 
-              className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" 
-              onClick={() => setShowEventModal(false)}
-              variants={backdropVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <AnimatePresence mode="wait">
+          {viewMode === 'month' ? (
+            <motion.div
+              key="month-view"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="flex-1 flex flex-col p-4 md:p-6 max-w-7xl mx-auto w-full"
             >
-              <motion.div 
-                className="bg-white rounded-2xl shadow-2xl w-96 p-6 max-h-[80vh] overflow-y-auto" 
-                onClick={(e) => e.stopPropagation()}
-                variants={modalVariants}
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {selectedDate && `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`}
-                  </h2>
-                  <motion.button
-                    onClick={() => setShowEventModal(false)}
-                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                    whileHover={{ rotate: 90, scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <X className="w-5 h-5 text-gray-500" />
-                  </motion.button>
-                </div>
+              <div className="grid grid-cols-7 mb-3">
+                {dayNames.map((day, i) => (
+                  <div key={day} className={`text-center text-xs font-semibold uppercase tracking-wide ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-400'}`}>
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden grid grid-cols-7 grid-rows-6">
+                {renderCalendar()}
+              </div>
+            </motion.div>
+          ) : renderDayView()}
+        </AnimatePresence>
+      </div>
 
-                <div className="space-y-4 mb-6">
+      {/* --- Modals --- */}
+      
+      {/* Event Modal */}
+      <AnimatePresence>
+        {showEventModal && (
+          <motion.div 
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowEventModal(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h2 className="text-lg font-bold text-gray-900">
+                  {selectedDate && `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`}
+                </h2>
+                <motion.button
+                  onClick={() => setShowEventModal(false)}
+                  className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                  whileHover={{ 
+                    rotate: 90, 
+                    transition: { type: "spring", stiffness: 300, damping: 12, bounce: 0.6 } 
+                  }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              </div>
+
+              <div className="p-6 overflow-y-auto">
+                <div className="space-y-5">
                   <input
                     type="text"
-                    placeholder="할 일 제목"
+                    placeholder="새로운 할 일을 입력하세요"
                     value={eventTitle}
                     onChange={(e) => setEventTitle(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-0 py-2 text-lg border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent placeholder-gray-300 transition-colors"
                     autoFocus
                   />
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">태그 선택</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">태그 선택</label>
+                    <div className="flex flex-wrap gap-2">
                       {tags.map(tag => (
-                        <motion.button
+                        <button
                           key={tag.id}
                           onClick={() => setSelectedTagId(tag.id)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
                             selectedTagId === tag.id 
-                              ? 'ring-2 ring-offset-2' 
-                              : 'hover:bg-gray-50'
+                              ? 'ring-2 ring-offset-1' 
+                              : 'border-transparent hover:bg-gray-100'
                           }`}
                           style={{ 
-                            backgroundColor: selectedTagId === tag.id ? `${tag.color}20` : 'white',
-                            color: tag.color,
-                            borderColor: tag.color,
-                            ringColor: tag.color
+                            backgroundColor: selectedTagId === tag.id ? tag.color : `${tag.color}15`,
+                            color: selectedTagId === tag.id ? 'white' : tag.color,
+                            borderColor: selectedTagId === tag.id ? 'transparent' : 'transparent',
+                            outlineColor: tag.color
                           }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
                         >
                           {tag.name}
-                        </motion.button>
+                        </button>
                       ))}
                     </div>
                   </div>
+
+                  <button
+                    onClick={addEvent}
+                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-[0.98]"
+                  >
+                    일정 추가하기
+                  </button>
+                </div>
+                
+                {selectedDate && events[getDateKey(selectedDate)] && events[getDateKey(selectedDate)].length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">현재 목록</h3>
+                    <div className="space-y-2">
+                      {events[getDateKey(selectedDate)].map(event => {
+                        const tag = getTagById(event.tagId);
+                        return (
+                          <div
+                            key={event.id}
+                            className={`flex items-center gap-3 p-3 rounded-xl border border-transparent hover:border-gray-100 transition-all
+                              ${event.completed ? 'bg-gray-50 opacity-60' : 'bg-white border-gray-50'}`}
+                          >
+                            <div
+                              className={`w-4 h-4 rounded-full border flex items-center justify-center cursor-pointer transition-colors ${event.completed ? 'bg-gray-400 border-gray-400' : 'bg-white border-gray-300'}`}
+                              onClick={() => toggleEventCompletion(getDateKey(selectedDate), event.id)}
+                            >
+                              {event.completed && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                            </div>
+                            <div className={`flex-1 text-sm font-medium text-gray-800 ${event.completed ? 'line-through text-gray-400' : ''}`}>
+                              {event.title}
+                            </div>
+                            <button
+                              onClick={() => deleteEvent(getDateKey(selectedDate), event.id)}
+                              className="text-gray-300 hover:text-red-500 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tag Manager Modal */}
+      <AnimatePresence>
+        {showTagModal && (
+          <motion.div 
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+            onClick={() => setShowTagModal(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" 
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900">태그 관리</h2>
+                <motion.button 
+                  onClick={() => setShowTagModal(false)} 
+                  className="p-1 hover:bg-gray-100 rounded-full text-gray-500"
+                  whileHover={{ 
+                    rotate: 90, 
+                    transition: { type: "spring", stiffness: 300, damping: 12, bounce: 0.6 } 
+                  }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-gray-50 p-4 rounded-xl space-y-4 border border-gray-100">
+                  <input
+                    type="text"
+                    placeholder="새 태그 이름"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-8 h-8 rounded-full cursor-pointer shadow-sm ring-2 ring-white" 
+                        style={{ backgroundColor: newTagColor }}
+                        onClick={() => setShowColorPicker(!showColorPicker)}
+                      />
+                      <span className="text-xs text-gray-500">색상 변경</span>
+                    </div>
+                    <button
+                      onClick={addTag}
+                      className="px-4 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-black transition-colors"
+                    >
+                      추가
+                    </button>
+                  </div>
+                  
+                  {showColorPicker && (
+                    <div className="p-3 bg-white border border-gray-100 rounded-xl shadow-lg grid grid-cols-5 gap-2">
+                      {colorOptions.map(color => (
+                        <div
+                          key={color}
+                          className="w-6 h-6 rounded-full cursor-pointer hover:scale-110 transition-transform"
+                          style={{ backgroundColor: color }}
+                          onClick={() => selectColor(color)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
+                <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
+                  {tags.map(tag => (
+                    <div key={tag.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: tag.color }} />
+                        <span className="text-sm font-medium text-gray-700">{tag.name}</span>
+                      </div>
+                      <button
+                        onClick={() => deleteTag(tag.id)}
+                        className="p-1 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Auth Modal */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <motion.div 
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+            onClick={() => setShowAuthModal(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="bg-white rounded-2xl shadow-2xl w-full max-sm p-8" 
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+            >
+              <div className="text-center mb-8 flex flex-col items-center">
+                <div className="w-full flex justify-end -mt-4 -mr-4">
+                   <motion.button 
+                    onClick={() => setShowAuthModal(false)} 
+                    className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400"
+                    whileHover={{ 
+                      rotate: 90, 
+                      transition: { type: "spring", stiffness: 300, damping: 12, bounce: 0.6 } 
+                    }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <X className="w-5 h-5" />
+                  </motion.button>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                  {authMode === 'login' ? '반가워요!' : '계정 만들기'}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {authMode === 'login' ? '플래너에 로그인하여 일정을 동기화하세요.' : '나만의 플래너를 시작해보세요.'}
+                </p>
+              </div>
+
+              <form onSubmit={handleAuth} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700 ml-1">이메일</label>
+                  <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-700 ml-1">비밀번호</label>
+                  <input
+                    type="password"
+                    placeholder="6자리 이상"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                    required
+                  />
+                </div>
+                
+                {authError && (
+                  <div className="text-red-500 text-xs bg-red-50 p-3 rounded-lg border border-red-100">
+                    {authError}
+                  </div>
+                )}
+
+                <motion.label className="flex items-center gap-2 cursor-pointer py-1" whileTap={{ scale: 0.98 }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">자동 로그인</span>
+                </motion.label>
+
                 <motion.button
-                  onClick={addEvent}
+                  type="submit"
                   className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  일정 추가
+                  {authMode === 'login' ? '로그인' : '회원가입'}
                 </motion.button>
-                
-                {/* 해당 날짜의 기존 일정 목록 */}
-                {selectedDate && events[getDateKey(selectedDate)] && events[getDateKey(selectedDate)].length > 0 && (
-                  <div className="mt-6 pt-4 border-t border-gray-100">
-                    <h3 className="text-lg font-semibold mb-3 text-gray-800">오늘의 할 일</h3>
-                    <div className="space-y-3">
-                      <AnimatePresence initial={false}>
-                        {events[getDateKey(selectedDate)].map(event => {
-                          const tag = getTagById(event.tagId);
-                          return (
-                            <motion.div
-                              key={event.id}
-                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden ${event.completed ? 'opacity-50' : 'hover:shadow-sm'}`}
-                              style={{ backgroundColor: `${tag?.color}10` }}
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <AnimatedCheckbox 
-                                isChecked={event.completed} 
-                                onClick={() => toggleEventCompletion(getDateKey(selectedDate), event.id)}
-                                color={tag?.color}
-                              />
-                              <div className={`flex-1 font-medium text-gray-900 ${event.completed ? 'line-through' : ''}`}>
-                                {event.title}
-                              </div>
-                              <motion.button
-                                onClick={() => deleteEvent(getDateKey(selectedDate), event.id)}
-                                className="p-1 hover:bg-red-100 rounded transition-colors"
-                                whileHover={{ scale: 1.2, rotate: 90 }}
-                                whileTap={{ scale: 0.9 }}
-                              >
-                                <X className="w-4 h-4 text-red-500" />
-                              </motion.button>
-                            </motion.div>
-                          );
-                        })}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
+              </form>
+
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => {
+                    setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                    setAuthError('');
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  {authMode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
+                </button>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 태그 관리 모달 */}
-        <AnimatePresence>
-          {showTagModal && (
-            <motion.div 
-              className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" 
-              onClick={() => setShowTagModal(false)}
-              variants={backdropVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <motion.div 
-                className="bg-white rounded-2xl shadow-2xl w-96 p-6 max-h-[80vh] overflow-y-auto" 
-                onClick={(e) => e.stopPropagation()}
-                variants={modalVariants}
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">태그 관리</h2>
-                  <motion.button
-                    onClick={() => setShowTagModal(false)}
-                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                    whileHover={{ rotate: 90, scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <X className="w-5 h-5 text-gray-500" />
-                  </motion.button>
-                </div>
-
-                <div className="space-y-4 mb-6">
-                  {/* 새 태그 추가 */}
-                  <div className="border p-4 rounded-lg space-y-3">
-                    <h3 className="font-medium text-gray-700">새 태그 추가</h3>
-                    <input
-                      type="text"
-                      placeholder="태그 이름"
-                      value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    
-                    {/* 색상 선택 */}
-                    <div className="relative">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">색상:</span>
-                          <div 
-                            className="w-6 h-6 rounded-full cursor-pointer border-2 border-gray-300" 
-                            style={{ backgroundColor: newTagColor }}
-                            onClick={() => setShowColorPicker(prev => !prev)}
-                          />
-                        </div>
-                        <motion.button
-                          onClick={addTag}
-                          className="px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          추가
-                        </motion.button>
-                      </div>
-                      
-                      {/* 색상 선택기 팝업 */}
-                      <AnimatePresence>
-                        {showColorPicker && (
-                          <motion.div
-                            className="absolute top-full mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-xl z-10"
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <div className="grid grid-cols-5 gap-2">
-                              {colorOptions.map(color => (
-                                <motion.div
-                                  key={color}
-                                  className="w-6 h-6 rounded-full cursor-pointer border-2 border-white shadow-md"
-                                  style={{ backgroundColor: color, outline: newTagColor === color ? `2px solid ${color}` : 'none' }}
-                                  onClick={() => selectColor(color)}
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                />
-                              ))}
-                            </div>
-                            <div className="mt-3 flex gap-2">
-                              <input
-                                type="color"
-                                value={customColor}
-                                onChange={(e) => setCustomColor(e.target.value)}
-                                className="w-8 h-8 p-0 border-none cursor-pointer"
-                              />
-                              <motion.button
-                                onClick={selectCustomColor}
-                                className="px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded-lg hover:bg-gray-300 transition-colors"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                              >
-                                선택
-                              </motion.button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-
-                  {/* 기존 태그 목록 */}
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-gray-700">현재 태그</h3>
-                    {tags.map(tag => (
-                      <motion.div
-                        key={tag.id}
-                        className="flex items-center justify-between p-2 rounded-lg"
-                        style={{ backgroundColor: `${tag.color}10` }}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
-                          <span className="text-sm font-medium" style={{ color: tag.color }}>{tag.name}</span>
-                        </div>
-                        <motion.button
-                          onClick={() => deleteTag(tag.id)}
-                          className="p-1 hover:bg-red-100 rounded transition-colors"
-                          whileHover={{ scale: 1.2 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <X className="w-4 h-4 text-red-500" />
-                        </motion.button>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 인증 모달 (로그인/회원가입) */}
-        <AnimatePresence>
-          {showAuthModal && (
-            <motion.div 
-              className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50" 
-              onClick={() => setShowAuthModal(false)}
-              variants={backdropVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <motion.div 
-                className="bg-white rounded-2xl shadow-2xl w-96 p-6" 
-                onClick={(e) => e.stopPropagation()}
-                variants={modalVariants}
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {authMode === 'login' ? '로그인' : '회원가입'}
-                  </h2>
-                  <motion.button
-                    onClick={() => setShowAuthModal(false)}
-                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                    whileHover={{ rotate: 90, scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                  >
-                    <X className="w-5 h-5 text-gray-500" />
-                  </motion.button>
-                </div>
-
-                <form onSubmit={handleAuth} className="space-y-4">
-                  <input
-                    type="email"
-                    placeholder="이메일"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                  <input
-                    type="password"
-                    placeholder="비밀번호 (6자리 이상)"
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                  
-    {authError && (
-      <motion.p 
-        className="text-red-500 text-sm bg-red-50 p-2 rounded-lg"
-        initial={{ opacity: 0, y: -5 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        {authError}
-      </motion.p>
-    )}
-
-    {/* 자동 로그인 체크박스 추가 */}
-    <motion.label 
-      className="flex items-center gap-2 cursor-pointer"
-      whileHover={{ x: 2 }}
-    >
-      <input
-        type="checkbox"
-        checked={rememberMe}
-        onChange={(e) => setRememberMe(e.target.checked)}
-        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-      />
-      <span className="text-sm text-gray-700">자동 로그인</span>
-    </motion.label>
-
-    <motion.button
-                    type="submit"
-                    className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {authMode === 'login' ? '로그인' : '회원가입'}
-                  </motion.button>
-                </form>
-
-                <div className="mt-4 text-center">
-                  <motion.button
-                    onClick={() => {
-                      setAuthMode(authMode === 'login' ? 'signup' : 'login');
-                      setAuthError(''); // 모드 변경 시 에러 메시지 초기화
-                    }}
-                    className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {authMode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
-                  </motion.button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
