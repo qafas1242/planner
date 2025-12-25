@@ -592,14 +592,14 @@ const MonthlyPlanner = () => {
     visible: { opacity: 1, height: 'auto', marginTop: 8, marginBottom: 8, transition: { duration: 0.3 } },
     exit: { opacity: 0, height: 0, marginTop: 0, marginBottom: 0, transition: { duration: 0.3 } }
   };
-  const renderCalendar = () => {
-    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
-    const days = [];
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(<div key={`empty-${i}`} className="bg-gray-50/30 border border-gray-100" />);
-    }
-    
-    for (let day = 1; day <= daysInMonth; day++) {
+	  const renderCalendar = () => {
+	    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
+	    const days = [];
+	    for (let i = 0; i < startingDayOfWeek; i++) {
+	      days.push(<div key={`empty-${i}`} className="bg-gray-50/30 border border-gray-100" />);
+	    }
+	    
+	    for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
       const dateKey = getDateKey(date);
       const dayEvents = events[dateKey] || [];
@@ -641,7 +641,8 @@ const MonthlyPlanner = () => {
                 return (
                   <motion.div
                     key={event.id}
-                    className={`flex items-center gap-1 text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-50' : ''}`}
+                    // gap-1을 gap-0.5로 변경하여 여백을 줄입니다.
+                    className={`flex items-center gap-0.5 text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-50' : ''}`}
                     style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -690,15 +691,17 @@ const MonthlyPlanner = () => {
   
   const renderDayView = () => {
     const days = getDaysForDayView;
-    return (
-      <motion.div 
-        ref={dayViewRef} // Ref를 스크롤 컨테이너에 연결
-        className="flex-1 overflow-y-auto"
-        initial={{ opacity: 0, x: viewMode === 'month' ? 50 : -50 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: viewMode === 'month' ? -50 : 50 }}
-        transition={{ duration: 0.4, type: "spring", stiffness: 200, damping: 25 }}
-      >
+	  return (
+	    <motion.div 
+	      key="day-view" // key를 day-view로 수정
+	      ref={dayViewRef} // Ref를 스크롤 컨테이너에 연결
+	      className="flex-1 overflow-y-auto"
+	      // 월간 <-> 일간 전환 애니메이션을 단순한 Fade 효과로 변경
+	      initial={{ opacity: 0 }}
+	      animate={{ opacity: 1 }}
+	      exit={{ opacity: 0 }}
+	      transition={{ duration: 0.3 }}
+	    >
         {days.map((date, index) => {
           const dateKey = getDateKey(date);
           const dayEvents = events[dateKey] || [];
