@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, Tag, Download, Upload, Calendar, List, User, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +10,10 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -46,13 +50,13 @@ const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
   };
   return (
     <motion.div
+      // 일간 모드 크기(200% 확대)로 복원
       className="w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer flex-shrink-0 relative"
       style={{ borderColor: color }}
       onClick={onClick}
       initial={false}
       animate={isChecked ? "checked" : "unchecked"}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
+      // 호버 애니메이션 삭제 (유지)
     >
       {/* 원형 배경 Fade In 채우기 */}
       <motion.div
@@ -61,6 +65,7 @@ const AnimatedCheckbox = ({ isChecked, onClick, color }) => {
         transition={{ duration: 0.3 }}
       />
       <motion.svg
+        // 체크마크 크기 복원
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -126,11 +131,19 @@ const MonthlyPlanner = () => {
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false); // 자동 로그인 상태 추가
   const [isDataLoaded, setIsDataLoaded] = useState(false); // DB 로딩 완료 여부 (덮어쓰기 방지)
 
   // --- Firebase Logic ---
 
-  // 1. Auth Listener: 로그인 상태 감지
+  // 1. 자동 로그인 설정 불러오기
+  useEffect(() => {
+    // 자동 로그인 설정 확인
+    const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
+    setRememberMe(savedRememberMe);
+  }, []);
+
+  // 2. Auth Listener: 로그인 상태 감지
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -184,12 +197,19 @@ const MonthlyPlanner = () => {
     setAuthError('');
     
     try {
+      // Persistence 설정
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      
       if (authMode === 'signup') {
         await createUserWithEmailAndPassword(auth, authEmail, authPassword);
         alert("회원가입 성공! 자동 로그인됩니다.");
       } else {
         await signInWithEmailAndPassword(auth, authEmail, authPassword);
       }
+      
+      // 자동 로그인 설정 저장
+      localStorage.setItem('rememberMe', rememberMe.toString());
+      
       setShowAuthModal(false);
       setAuthEmail('');
       setAuthPassword('');
@@ -241,6 +261,11 @@ const MonthlyPlanner = () => {
     try {
       // 먼저 isDataLoaded를 false로 설정하여 Auto Save 방지
       setIsDataLoaded(false);
+      
+      // 자동 로그인이 비활성화되어 있으면 localStorage 초기화
+      if (!rememberMe) {
+        localStorage.removeItem('rememberMe');
+      }
       
       // Firebase 로그아웃 실행
       await signOut(auth);
@@ -534,13 +559,10 @@ const MonthlyPlanner = () => {
       }
     },
     hover: { 
-      scale: 1.03, 
-      y: -2,
+      // 크기 조절 및 위치 이동 제거, 그림자 효과만 남김
       boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
       transition: { 
-        type: "spring", 
-        stiffness: 500, 
-        damping: 15 
+        duration: 0.2
       } 
     }
   };
@@ -565,35 +587,10 @@ const MonthlyPlanner = () => {
   };
   // 일간 보기 항목 애니메이션 (상호작용 강화)
   const dayTaskItemVariants = {
-    hidden: { 
-      scaleX: 0, 
-      opacity: 0, 
-      originX: 0,
-      transition: { duration: 0.3 }
-    },
-    visible: (i) => ({ 
-      scaleX: 1, 
-      opacity: 1, 
-      originX: 0,
-      transition: { 
-        type: "spring", 
-        stiffness: 300, 
-        damping: 15, 
-        delay: i * 0.05, // 순차적 등장
-        when: "beforeChildren"
-      }
-    }),
-    exit: { 
-      opacity: 0, 
-      scaleX: 0,
-      height: 0, 
-      paddingTop: 0, 
-      paddingBottom: 0,
-      transition: { 
-        duration: 0.4,
-        ease: "easeInOut"
-      }
-    }
+    // 불필요한 애니메이션을 제거하고, 목록에서 추가/삭제 시 부드러운 전환을 위한 기본 애니메이션만 남깁니다.
+    hidden: { opacity: 0, height: 0, marginTop: 0, marginBottom: 0 },
+    visible: { opacity: 1, height: 'auto', marginTop: 8, marginBottom: 8, transition: { duration: 0.3 } },
+    exit: { opacity: 0, height: 0, marginTop: 0, marginBottom: 0, transition: { duration: 0.3 } }
   };
   const renderCalendar = () => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
@@ -607,7 +604,8 @@ const MonthlyPlanner = () => {
       const dateKey = getDateKey(date);
       const dayEvents = events[dateKey] || [];
       const isToday = new Date().toDateString() === date.toDateString();
-      const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+      // 완료된 항목(a.completed: true)을 미완료 항목(b.completed: false)보다 뒤로(1) 보내 목록의 가장 아래로 정렬합니다.
+          const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
       days.push(
         <motion.div
           key={day}
@@ -620,10 +618,11 @@ const MonthlyPlanner = () => {
           transition={{ duration: 0.3, delay: (day + startingDayOfWeek) * 0.015 }}
         >
           <div className="flex justify-between items-start mb-1">
-            <motion.span 
-              className={`text-xs sm:text-sm font-medium ${isToday ? 'bg-blue-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs' : 'text-gray-700'}`}
-              whileHover={isToday ? { scale: 1.1, rotate: 5 } : {}}
-            >
+              <motion.span 
+	              className={`text-xs sm:text-sm font-medium transition-colors duration-200 ${isToday ? 'bg-blue-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-xs' : 'text-gray-700'}`}
+	              // 크기 조절 및 회전 애니메이션 제거
+	              whileHover={isToday ? { backgroundColor: '#3B82F6' } : { color: '#1F2937' }}
+	            >
               {day}
             </motion.span>
             <motion.div
@@ -642,16 +641,31 @@ const MonthlyPlanner = () => {
                 return (
                   <motion.div
                     key={event.id}
-                    className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-60' : ''}`}
+                    className={`flex items-center gap-1 text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate ${event.completed ? 'line-through opacity-50' : ''}`}
                     style={{ backgroundColor: `${tag?.color}20`, color: tag?.color }}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // 월간 모드에서 체크박스 클릭 시 완료 상태 토글
+                      toggleEventCompletion(dateKey, event.id);
+                    }}
                     variants={calendarEventVariants}
                     initial="hidden"
                     animate="visible"
                     exit={{ scaleX: 0, opacity: 0, transition: { duration: 0.3 } }}
                     custom={index}
                   >
-                    {event.title}
+                    {/* 체크박스 추가 (월간 모드 크기 50% 적용) */}
+                    <div className="transform scale-50 origin-left">
+                      <AnimatedCheckbox 
+                        isChecked={event.completed} 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleEventCompletion(dateKey, event.id);
+                        }}
+                        color={tag?.color}
+                      />
+                    </div>
+                    <span className="truncate">{event.title}</span>
                   </motion.div>
                 );
               })}
@@ -691,6 +705,7 @@ const MonthlyPlanner = () => {
           const isToday = new Date().toDateString() === date.toDateString();
           const dayOfWeek = dayNames[date.getDay()];
           
+          // 완료된 항목(a.completed: true)을 미완료 항목(b.completed: false)보다 뒤로(1) 보내 목록의 가장 아래로 정렬합니다.
           const sortedEvents = dayEvents.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
           return (
@@ -706,9 +721,10 @@ const MonthlyPlanner = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <motion.div 
-                      className={`text-2xl font-bold ${isToday ? 'text-blue-600' : 'text-gray-900'}`}
-                      whileHover={{ scale: 1.1 }}
-                    >
+	                      className={`text-2xl font-bold transition-colors duration-200 ${isToday ? 'text-blue-600' : 'text-gray-900'}`}
+	                      // 크기 조절 애니메이션 제거, 색상 변경만 남김
+	                      whileHover={isToday ? { color: '#2563EB' } : { color: '#111827' }}
+	                    >
                       {date.getDate()}
                     </motion.div>
                     <div>
@@ -741,27 +757,21 @@ const MonthlyPlanner = () => {
                       {sortedEvents.map((event, eventIndex) => {
                         const tag = getTagById(event.tagId);
                         return (
-                          <motion.div
-                            key={event.id}
-                            // 체크된 항목은 투명도를 낮춥니다.
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden ${event.completed ? 'opacity-50' : 'hover:shadow-md'}`}
-                            style={{ backgroundColor: `${tag?.color}10` }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleEventCompletion(dateKey, event.id);
-                            }}
-                            variants={dayTaskItemVariants} // 변경된 variants 적용
-                            custom={eventIndex} // staggerChildren을 위해 index 전달
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                            layout
-                            whileHover={{ 
-                              scale: event.completed ? 1.0 : 1.02, 
-                              boxShadow: event.completed ? 'none' : "0 8px 16px rgba(0, 0, 0, 0.1)",
-                              transition: { type: "spring", stiffness: 400, damping: 15 }
-                            }}
-                          >
+                                       <motion.div
+                              key={event.id}
+                              // 체크된 항목은 투명도를 낮춥니다.
+                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer overflow-hidden transition-opacity duration-300 ${event.completed ? 'opacity-50' : ''}`}
+                              style={{ backgroundColor: `${tag?.color}10` }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleEventCompletion(dateKey, event.id);
+                              }}
+                              variants={dayTaskItemVariants}
+                              initial="hidden"
+                              animate="visible"
+                              exit="exit"
+                              // 일간 모드 작업 항목에 마우스를 올렸을 때 크기가 커지는 애니메이션 삭제 (whileHover 속성 제거)
+                            >
                             <AnimatedCheckbox 
                               isChecked={event.completed} 
                               onClick={(e) => {
@@ -1320,17 +1330,31 @@ const MonthlyPlanner = () => {
                     required
                   />
                   
-                  {authError && (
-                    <motion.p 
-                      className="text-red-500 text-sm bg-red-50 p-2 rounded-lg"
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      {authError}
-                    </motion.p>
-                  )}
+    {authError && (
+      <motion.p 
+        className="text-red-500 text-sm bg-red-50 p-2 rounded-lg"
+        initial={{ opacity: 0, y: -5 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        {authError}
+      </motion.p>
+    )}
 
-                  <motion.button
+    {/* 자동 로그인 체크박스 추가 */}
+    <motion.label 
+      className="flex items-center gap-2 cursor-pointer"
+      whileHover={{ x: 2 }}
+    >
+      <input
+        type="checkbox"
+        checked={rememberMe}
+        onChange={(e) => setRememberMe(e.target.checked)}
+        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+      />
+      <span className="text-sm text-gray-700">자동 로그인</span>
+    </motion.label>
+
+    <motion.button
                     type="submit"
                     className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
                     whileHover={{ scale: 1.02 }}
